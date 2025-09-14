@@ -868,7 +868,7 @@ function filterSlotsByBusinessHours(slots, date) {
 // Fetch groups for department radio
 onMounted(async () => {
   try {
-    const res = await fetch('https://restyle-api.netlify.app/.netlify/functions/supabasegroups')
+    const res = await fetch('https://restyle-backend.netlify.app/.netlify/functions/supabasegroups')
     const data = await res.json()
 
     departmentRadioItems.value = data.groups.map(group => ({
@@ -900,7 +900,7 @@ watch(selectedDepartment, async (groupId) => {
   loadingServices.value = true
   selectedService.value = ''
   try {
-    const res = await fetch(`https://restyle-api.netlify.app/.netlify/functions/Services?id=${groupId}`)
+    const res = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const data = await res.json()
     serviceRadioItems.value = (data.calendars || []).map(service => ({
       label: service.name,
@@ -923,7 +923,7 @@ watch(selectedService, async (serviceId) => {
   loadingStaff.value = true
   try {
     const groupId = selectedDepartment.value
-    const lastServiceApi = await fetch(`https://restyle-api.netlify.app/.netlify/functions/Services?id=${groupId}`)
+    const lastServiceApi = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const lastServiceData = await lastServiceApi.json()
     console.log('Service API response:', lastServiceData)
     const serviceObj = (lastServiceData.calendars || []).find(s => s.id === serviceId)
@@ -940,7 +940,7 @@ watch(selectedService, async (serviceId) => {
 
     const staffPromises = teamMembers.map(async member => {
       try {
-        const staffRes = await fetch(`https://restyle-api.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
+        const staffRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
         const staffData = await staffRes.json()
         console.log('Staff API response for member:', member.userId, staffData)
         return {
@@ -990,7 +990,7 @@ async function fetchWorkingSlots() {
   try {
     // Use WorkingSlots endpoint - returns 7 working days skipping weekends
     // Include userId parameter when staff is selected for filtered slots
-    let apiUrl = `https://restyle-api.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
+    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
     if (userId) {
       apiUrl += `&userId=${userId}`
       console.log('Fetching slots for specific staff userId:', userId)
@@ -1016,7 +1016,7 @@ async function fetchWorkingSlots() {
       // If specific staff selected but no slots returned, try fetching for all staff
       if (userId && selectedStaff.value !== 'any') {
         console.log('No slots found for specific staff, trying to fetch all available slots')
-        const fallbackUrl = `https://restyle-api.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
+        const fallbackUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
         console.log('Fallback API URL:', fallbackUrl)
         
         try {
@@ -1428,7 +1428,7 @@ async function upgradeCustomer(contactId, firstName, lastName) {
   if (!contactId || !firstName || !lastName) return false
   
   try {
-    const upgradeUrl = `https://restyle-api.netlify.app/.netlify/functions/upgradecustomer?id=${contactId}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}`
+    const upgradeUrl = `https://restyle-backend.netlify.app/.netlify/functions/upgradecustomer?id=${contactId}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}`
     console.log('Upgrading customer with URL:', upgradeUrl)
     
     const response = await fetch(upgradeUrl)
@@ -1463,7 +1463,7 @@ async function handleInformationSubmit() {
 
       console.log('Creating contact with params:', params.toString())
       const contactRes = await fetch(
-        `https://restyle-api.netlify.app/.netlify/functions/customer?${params.toString()}`
+        `https://restyle-backend.netlify.app/.netlify/functions/customer?${params.toString()}`
       )
       const contactData = await contactRes.json()
       console.log('Contact creation response:', contactData)
@@ -1548,7 +1548,7 @@ async function handleInformationSubmit() {
     const contactName = `${contactForm.value.firstName} ${contactForm.value.lastName}`.trim()
     const title = `${serviceName} - ${contactName}`
     
-    let bookUrl = `https://restyle-api.netlify.app/.netlify/functions/Apointment?contactId=${contactId}&calendarId=${selectedService.value}&startTime=${startTime}&endTime=${endTime}&title=${encodeURIComponent(title)}`
+    let bookUrl = `https://restyle-backend.netlify.app/.netlify/functions/Apointment?contactId=${contactId}&calendarId=${selectedService.value}&startTime=${startTime}&endTime=${endTime}&title=${encodeURIComponent(title)}`
     if (assignedUserId) bookUrl += `&assignedUserId=${assignedUserId}`
 
     console.log('Booking URL:', bookUrl)

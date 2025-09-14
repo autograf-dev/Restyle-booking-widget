@@ -526,7 +526,7 @@ onMounted(async () => {
 // Fetch appointment details
 async function fetchAppointmentDetails() {
   try {
-    const response = await fetch(`https://restyle-api.netlify.app/.netlify/functions/getBooking?id=${appointmentId.value}`)
+    const response = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/getBooking?id=${appointmentId.value}`)
     const data = await response.json()
     
     console.log('[v0] API Response:', data) // Debug log to see actual response structure
@@ -581,7 +581,7 @@ async function fetchStaffOptions() {
   loadingStaff.value = true
   try {
     // Fetch service details to get team members
-    const serviceRes = await fetch(`https://restyle-api.netlify.app/.netlify/functions/Services?id=${currentAppointment.value.groupId || 'default'}`)
+    const serviceRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${currentAppointment.value.groupId || 'default'}`)
     const serviceData = await serviceRes.json()
     
     const serviceObj = (serviceData.calendars || []).find(s => s.id === currentAppointment.value.calendarId)
@@ -596,7 +596,7 @@ async function fetchStaffOptions() {
 
     const staffPromises = teamMembers.map(async member => {
       try {
-        const staffRes = await fetch(`https://restyle-api.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
+        const staffRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
         const staffData = await staffRes.json()
         return {
           label: staffData.name,
@@ -652,7 +652,7 @@ async function fetchWorkingSlots() {
   } catch {}
 
   // Build API URL with userId parameter for filtered slots
-  let apiUrl = `https://restyle-api.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}${startDateParam}`
+  let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}${startDateParam}`
   if (userId) {
     apiUrl += `&userId=${userId}`
   }
@@ -904,7 +904,7 @@ async function updateAppointment() {
     }
 
     // Build update URL. Always include assignedUserId
-    let updateUrl = `https://restyle-api.netlify.app/.netlify/functions/updateappointment?appointmentId=${appointmentId.value}&assignedUserId=${assignedUserIdToSend}`
+    let updateUrl = `https://restyle-backend.netlify.app/.netlify/functions/updateappointment?appointmentId=${appointmentId.value}&assignedUserId=${assignedUserIdToSend}`
 
     // Add time parameters if changed
     if (
