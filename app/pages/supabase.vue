@@ -1338,6 +1338,13 @@ watch(selectedService, (serviceId) => {
 // If staff changes, refresh working slots for current service
 watch(selectedStaff, () => {
   if (selectedService.value) {
+    // Clear current UI to avoid showing stale slots while fetching
+    loadingSlots.value = true
+    slotsForDate.value = []
+    selectedSlot.value = ''
+    selectedDateString.value = ''
+    workingSlots.value = {}
+    workingSlotsLoaded.value = false
     fetchWorkingSlots()
   }
 })
@@ -1536,14 +1543,50 @@ async function handleInformationSubmit() {
 
     jsDate.setHours(hour, minute, 0, 0)
 
-    const mstOffset = -7 * 60 * 60 * 1000
-    const utcStartTime = new Date(jsDate.getTime() - mstOffset)
+    // Convert selected America/Denver wall time to UTC reliably
+    function getTimeZoneOffsetInMs(timeZone, utcDate) {
+      const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+      const parts = dtf.formatToParts(utcDate)
+      const map = {}
+      for (const p of parts) {
+        if (p.type !== 'literal') map[p.type] = p.value
+      }
+      const asUTC = Date.UTC(
+        Number(map.year),
+        Number(map.month) - 1,
+        Number(map.day),
+        Number(map.hour),
+        Number(map.minute),
+        Number(map.second)
+      )
+      return asUTC - utcDate.getTime()
+    }
+
+    function denverWallTimeToUtcIso(year, month, day, hour, minute) {
+      // Construct a UTC date from the wall time components
+      const baseUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
+      const offset = getTimeZoneOffsetInMs('America/Denver', baseUtc)
+      return new Date(baseUtc.getTime() - offset).toISOString()
+    }
+
+    const y = jsDate.getFullYear()
+    const m = jsDate.getMonth() + 1
+    const d = jsDate.getDate()
+
+    const startTime = denverWallTimeToUtcIso(y, m, d, hour, minute)
 
     const duration = parseInt(getServiceDuration(selectedService.value)) || 120
-    const utcEndTime = new Date(utcStartTime.getTime() + duration * 60 * 1000)
-
-    const startTime = utcStartTime.toISOString()
-    const endTime = utcEndTime.toISOString()
+    const jsEnd = new Date(new Date(startTime).getTime() + duration * 60 * 1000)
+    const endTime = jsEnd.toISOString()
 
     let assignedUserId = selectedStaff.value
     if (assignedUserId === 'any' || !assignedUserId) {
