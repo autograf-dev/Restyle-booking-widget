@@ -946,9 +946,15 @@ watch(selectedService, async (serviceId) => {
 
         // Derive a readable name with safe fallbacks
         const derivedName =
+          // Primary: API returns { data: { name } }
+          staffData?.data?.name ||
+          // Sometimes top-level name
           staffData?.name ||
           staffData?.fullName ||
           staffData?.displayName ||
+          // From nested staff or users objects
+          [staffData?.staff?.firstName, staffData?.staff?.lastName].filter(Boolean).join(' ') ||
+          [staffData?.users?.firstName, staffData?.users?.lastName].filter(Boolean).join(' ') ||
           [staffData?.firstName, staffData?.lastName].filter(Boolean).join(' ') ||
           staffData?.user?.name ||
           'Staff'
