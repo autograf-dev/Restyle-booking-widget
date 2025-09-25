@@ -943,10 +943,20 @@ watch(selectedService, async (serviceId) => {
         const staffRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
         const staffData = await staffRes.json()
         console.log('Staff API response for member:', member.userId, staffData)
+
+        // Derive a readable name with safe fallbacks
+        const derivedName =
+          staffData?.name ||
+          staffData?.fullName ||
+          staffData?.displayName ||
+          [staffData?.firstName, staffData?.lastName].filter(Boolean).join(' ') ||
+          staffData?.user?.name ||
+          'Staff'
+
         return {
-          label: staffData.name,
-          value: member.userId, // Use member.userId instead of staffData.id to match team member
-          originalStaffId: staffData.id, // Keep original for reference
+          label: derivedName,
+          value: member.userId || staffData?.id,
+          originalStaffId: staffData?.id,
           icon: 'i-lucide-user'
         }
       } catch (e) {
