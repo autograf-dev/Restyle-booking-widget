@@ -924,18 +924,54 @@ async function updateAppointment() {
 
         jsDate.setHours(hour, minute, 0, 0)
 
-        // Convert to UTC (MST is UTC-7)
-        const mstOffset = -7 * 60 * 60 * 1000
-        const utcStartTime = new Date(jsDate.getTime() - mstOffset)
+        // Convert selected America/Denver wall time to UTC reliably
+        function getTimeZoneOffsetInMs(timeZone, utcDate) {
+          const dtf = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hour12: false,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          })
+          const parts = dtf.formatToParts(utcDate)
+          const map = {}
+          for (const p of parts) {
+            if (p.type !== 'literal') map[p.type] = p.value
+          }
+          const asUTC = Date.UTC(
+            Number(map.year),
+            Number(map.month) - 1,
+            Number(map.day),
+            Number(map.hour),
+            Number(map.minute),
+            Number(map.second)
+          )
+          return asUTC - utcDate.getTime()
+        }
 
-        // Calculate end time (assuming same duration)
+        function denverWallTimeToUtcIso(year, month, day, hour, minute) {
+          const baseUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0))
+          const offset = getTimeZoneOffsetInMs('America/Denver', baseUtc)
+          return new Date(baseUtc.getTime() - offset).toISOString()
+        }
+
+        const y = jsDate.getFullYear()
+        const m = jsDate.getMonth() + 1
+        const d = jsDate.getDate()
+
+        const startIso = denverWallTimeToUtcIso(y, m, d, hour, minute)
+
+        // Calculate end time using original duration
         const originalStart = new Date(currentAppointment.value.startTime)
         const originalEnd = new Date(currentAppointment.value.endTime)
         const duration = originalEnd.getTime() - originalStart.getTime()
-        const utcEndTime = new Date(utcStartTime.getTime() + duration)
+        const endIso = new Date(new Date(startIso).getTime() + duration).toISOString()
 
-        updateUrl += `&startTime=${encodeURIComponent(utcStartTime.toISOString())}`
-        updateUrl += `&endTime=${encodeURIComponent(utcEndTime.toISOString())}`
+        updateUrl += `&startTime=${encodeURIComponent(startIso)}`
+        updateUrl += `&endTime=${encodeURIComponent(endIso)}`
       }
     }
 
