@@ -1014,13 +1014,14 @@ async function updateAppointment() {
     if (servicePrice) updateUrl += `&servicePrice=${servicePrice}`
     if (serviceDuration) updateUrl += `&serviceDuration=${serviceDuration}`
     if (staffName) updateUrl += `&staffName=${encodeURIComponent(staffName)}`
-    if (customerName) {
-      const nameParts = customerName.split(' ')
-      const firstName = nameParts[0] || ''
-      const lastName = nameParts.slice(1).join(' ') || ''
-      updateUrl += `&customerFirstName=${encodeURIComponent(firstName)}`
-      updateUrl += `&customerLastName=${encodeURIComponent(lastName)}`
-    }
+    // ✅ SKIP: Don't send customer name for updates (customer stays the same)
+    // if (customerName) {
+    //   const nameParts = customerName.split(' ')
+    //   const firstName = nameParts[0] || ''
+    //   const lastName = nameParts.slice(1).join(' ') || ''
+    //   updateUrl += `&customerFirstName=${encodeURIComponent(firstName)}`
+    //   updateUrl += `&customerLastName=${encodeURIComponent(lastName)}`
+    // }
 
     // Add time parameters if changed
     if (
