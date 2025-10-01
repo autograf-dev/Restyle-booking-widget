@@ -1640,6 +1640,8 @@ async function handleInformationSubmit() {
     console.log('Service Duration:', duration, 'minutes')
     console.log('Staff Name:', staffName)
     console.log('Customer Name:', `${contactForm.value.firstName} ${contactForm.value.lastName}`)
+    console.log('Start Time (UTC):', startTime)
+    console.log('End Time (UTC):', endTime)
     
     // Build booking URL with enhanced data
     let bookUrl = `https://restyle-backend.netlify.app/.netlify/functions/Apointment?contactId=${contactId}&calendarId=${selectedService.value}&startTime=${startTime}&endTime=${endTime}&title=${encodeURIComponent(title)}`
