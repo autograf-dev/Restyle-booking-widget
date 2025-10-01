@@ -521,15 +521,25 @@ onMounted(async () => {
   }
   
   console.log('🚀 Starting appointment loading process...')
+  
+  // ✅ OPTIMIZED: Load appointment details first
   await fetchAppointmentDetails()
   console.log('📋 Appointment details loaded, current staff ID:', currentAppointment.value.assignedUserId)
-  await fetchStaffOptions()
+  
+  // ✅ OPTIMIZED: Load staff options and working slots in parallel for better performance
+  const [staffResult, workingSlotsResult] = await Promise.allSettled([
+    fetchStaffOptions(),
+    fetchWorkingSlots()
+  ])
+  
   console.log('👥 Staff options loaded, selected staff:', selectedStaff.value)
-  await fetchWorkingSlots()
-  console.log('✅ All data loaded successfully')
+  console.log('📅 Working slots loaded')
+  
   // Generate dates after appointment details are loaded
   await generateAvailableDates()
   datesLoading.value = false
+  
+  console.log('✅ All data loaded successfully')
 })
 
 // Fetch appointment details
@@ -618,12 +628,30 @@ async function fetchStaffOptions() {
         
         // Store staff data for enhanced booking information
         staffData.value[member.userId] = staffDataResponse
+        
+        // ✅ FIXED: Use the same name extraction logic as supabase.vue
+        const derivedName =
+          // Primary: API returns { data: { name } }
+          staffDataResponse?.data?.name ||
+          // Sometimes top-level name
+          staffDataResponse?.name ||
+          staffDataResponse?.fullName ||
+          staffDataResponse?.displayName ||
+          // From nested staff or users objects
+          [staffDataResponse?.staff?.firstName, staffDataResponse?.staff?.lastName].filter(Boolean).join(' ') ||
+          [staffDataResponse?.users?.firstName, staffDataResponse?.users?.lastName].filter(Boolean).join(' ') ||
+          [staffDataResponse?.firstName, staffDataResponse?.lastName].filter(Boolean).join(' ') ||
+          staffDataResponse?.user?.name ||
+          'Staff'
+        
         return {
-          label: staffDataResponse.name,
-          value: staffDataResponse.id,
+          label: derivedName,
+          value: member.userId || staffDataResponse?.id,
+          originalStaffId: staffDataResponse?.id,
           icon: 'i-lucide-user'
         }
       } catch (e) {
+        console.error('Error fetching staff data for member:', member.userId, e)
         return null
       }
     })
@@ -637,13 +665,18 @@ async function fetchStaffOptions() {
     // This ensures the current staff member is properly selected instead of defaulting to "any"
     if (currentAppointment.value.assignedUserId) {
       // Check if the current staff member is in the available options
-      const currentStaffExists = staffRadioItems.value.find(item => item.value === currentAppointment.value.assignedUserId)
+      const currentStaffExists = staffRadioItems.value.find(item => 
+        item.value === currentAppointment.value.assignedUserId || 
+        item.originalStaffId === currentAppointment.value.assignedUserId
+      )
       if (currentStaffExists) {
-        selectedStaff.value = currentAppointment.value.assignedUserId
-        console.log('✅ Set selected staff to current appointment staff:', currentAppointment.value.assignedUserId)
+        selectedStaff.value = currentStaffExists.value
+        console.log('✅ Set selected staff to current appointment staff:', currentStaffExists.label, '(ID:', currentStaffExists.value, ')')
       } else {
         selectedStaff.value = 'any'
         console.log('⚠️ Current staff not available, defaulting to "any"')
+        console.log('Available staff options:', staffRadioItems.value.map(s => ({ label: s.label, value: s.value, originalStaffId: s.originalStaffId })))
+        console.log('Looking for assignedUserId:', currentAppointment.value.assignedUserId)
       }
     } else {
       selectedStaff.value = 'any'
@@ -866,7 +899,12 @@ async function fetchSlotsForDate(dateString) {
 // This function is no longer needed as we use prefetched working slots
 
 async function selectStaff(staffId) {
+  console.log('🔄 Selecting staff:', staffId)
   selectedStaff.value = staffId
+  
+  // ✅ FIXED: Don't auto-advance to step 2, let user manually proceed
+  // This prevents the UI from jumping around and allows proper staff selection
+  
   // Keep spinner visible while refreshing slots for new staff
   loadingSlots.value = true
   slotsForDate.value = []
@@ -891,10 +929,7 @@ async function selectStaff(staffId) {
     await fetchSlotsForDate(firstAvailableDate.dateString)
   }
   
-  // Auto-advance to step 2
-  setTimeout(() => {
-    currentStep.value = 2
-  }, 300)
+  console.log('✅ Staff selection completed:', staffId)
 }
 
 function selectDate(dateInfo) {
@@ -1079,8 +1114,11 @@ function resetForm() {
   // Reset to original appointment values
   // ✅ FIXED: Properly set staff selection based on available options
   if (currentAppointment.value.assignedUserId) {
-    const currentStaffExists = staffRadioItems.value.find(item => item.value === currentAppointment.value.assignedUserId)
-    selectedStaff.value = currentStaffExists ? currentAppointment.value.assignedUserId : 'any'
+    const currentStaffExists = staffRadioItems.value.find(item => 
+      item.value === currentAppointment.value.assignedUserId || 
+      item.originalStaffId === currentAppointment.value.assignedUserId
+    )
+    selectedStaff.value = currentStaffExists ? currentStaffExists.value : 'any'
   } else {
     selectedStaff.value = 'any'
   }
