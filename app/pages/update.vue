@@ -319,8 +319,8 @@
       </div>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-clock" class="text-black" />
-        <span class="text-sm font-medium">{{ selectedSlot }}</span>
-        <span v-if="selectedSlot !== formatAppointmentTime(currentAppointment.startTime)" class="text-xs bg-red-100 text-black px-2 py-1 rounded">Changed</span>
+        <span class="text-sm font-medium">{{ selectedSlot || formatAppointmentTime(currentAppointment.startTime) }}</span>
+        <span v-if="selectedSlot && selectedSlot !== formatAppointmentTime(currentAppointment.startTime)" class="text-xs bg-red-100 text-black px-2 py-1 rounded">Changed</span>
       </div>
     </div>
   </div>
@@ -337,7 +337,7 @@
                   <li class="text-black text-sm font-inter" v-if="selectedDateString !== formatAppointmentDateString(currentAppointment.startTime)">
                     • Date changed to {{ formatDateForDisplay(selectedDateString) }}
                   </li>
-                  <li class="text-black text-sm font-inter" v-if="selectedSlot !== formatAppointmentTime(currentAppointment.startTime)">
+                  <li class="text-black text-sm font-inter" v-if="selectedSlot && selectedSlot !== formatAppointmentTime(currentAppointment.startTime)">
                     • Time changed to {{ selectedSlot }}
                   </li>
                 </ul>
@@ -382,7 +382,7 @@
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-clock" class="text-green-700" />
-                    <span class="text-sm font-medium">{{ selectedSlot }}</span>
+                    <span class="text-sm font-medium">{{ selectedSlot || formatAppointmentTime(currentAppointment.startTime) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-scissors" class="text-green-700" />
@@ -930,6 +930,12 @@ async function selectStaff(staffId) {
   setTimeout(() => {
     currentStep.value = 2
     console.log('✅ Advanced to step 2 (date/time selection)')
+    
+    // ✅ FIXED: Log the updated staff and customer data after staff change
+    console.log('📝 Updated data after staff change:')
+    console.log('   Selected Staff:', selectedStaff.value)
+    console.log('   Staff Name:', getStaffName())
+    console.log('   Customer Name:', getCustomerName())
   }, 300)
   
   console.log('✅ Staff selection completed:', staffId)
@@ -1316,15 +1322,53 @@ function getServiceDuration() {
 
 function getStaffName() {
   const staffId = selectedStaff.value && selectedStaff.value !== 'any' ? selectedStaff.value : currentAppointment.value.assignedUserId
-  if (!staffId || !staffData.value[staffId]) return null
-  return staffData.value[staffId].name || null
+  if (!staffId) return null
+  
+  // ✅ FIXED: Use the same robust name extraction logic as in staff loading
+  const staffInfo = staffData.value[staffId]
+  if (!staffInfo) return null
+  
+  const derivedName =
+    // Primary: API returns { data: { name } }
+    staffInfo?.data?.name ||
+    // Sometimes top-level name
+    staffInfo?.name ||
+    staffInfo?.fullName ||
+    staffInfo?.displayName ||
+    // From nested staff or users objects
+    [staffInfo?.staff?.firstName, staffInfo?.staff?.lastName].filter(Boolean).join(' ') ||
+    [staffInfo?.users?.firstName, staffInfo?.users?.lastName].filter(Boolean).join(' ') ||
+    [staffInfo?.firstName, staffInfo?.lastName].filter(Boolean).join(' ') ||
+    staffInfo?.user?.name ||
+    null
+  
+  console.log('🔍 getStaffName debug:', {
+    staffId,
+    staffInfo,
+    derivedName
+  })
+  
+  return derivedName
 }
 
 function getCustomerName() {
-  if (!currentAppointmentContact.value) return null
+  if (!currentAppointmentContact.value) {
+    console.log('🔍 getCustomerName debug: No contact data available')
+    return null
+  }
+  
   const firstName = currentAppointmentContact.value.firstName || ''
   const lastName = currentAppointmentContact.value.lastName || ''
-  return `${firstName} ${lastName}`.trim() || null
+  const fullName = `${firstName} ${lastName}`.trim() || null
+  
+  console.log('🔍 getCustomerName debug:', {
+    contact: currentAppointmentContact.value,
+    firstName,
+    lastName,
+    fullName
+  })
+  
+  return fullName
 }
 
 // Utility functions for date/time formatting
