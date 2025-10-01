@@ -1357,18 +1357,39 @@ function getCustomerName() {
     return null
   }
   
-  const firstName = currentAppointmentContact.value.firstName || ''
-  const lastName = currentAppointmentContact.value.lastName || ''
-  const fullName = `${firstName} ${lastName}`.trim() || null
+  // ✅ FIXED: Try multiple possible field names for customer name
+  const contact = currentAppointmentContact.value
+  
+  // Try different possible field combinations
+  const firstName = contact.firstName || contact.first_name || contact.givenName || contact.given_name || ''
+  const lastName = contact.lastName || contact.last_name || contact.familyName || contact.family_name || contact.surname || ''
+  
+  // If we have first/last names, combine them
+  let fullName = `${firstName} ${lastName}`.trim()
+  
+  // If no first/last names, try direct full name fields
+  if (!fullName) {
+    fullName = contact.fullName || contact.full_name || contact.name || contact.displayName || contact.display_name || ''
+  }
+  
+  // If still no name, try from nested objects
+  if (!fullName && contact.data) {
+    const dataFirstName = contact.data.firstName || contact.data.first_name || ''
+    const dataLastName = contact.data.lastName || contact.data.last_name || ''
+    fullName = `${dataFirstName} ${dataLastName}`.trim() || contact.data.fullName || contact.data.name || ''
+  }
+  
+  const result = fullName || null
   
   console.log('🔍 getCustomerName debug:', {
-    contact: currentAppointmentContact.value,
+    contact,
     firstName,
     lastName,
-    fullName
+    fullName: result,
+    availableFields: Object.keys(contact)
   })
   
-  return fullName
+  return result
 }
 
 // Utility functions for date/time formatting
