@@ -520,9 +520,13 @@ onMounted(async () => {
     return
   }
   
+  console.log('🚀 Starting appointment loading process...')
   await fetchAppointmentDetails()
+  console.log('📋 Appointment details loaded, current staff ID:', currentAppointment.value.assignedUserId)
   await fetchStaffOptions()
+  console.log('👥 Staff options loaded, selected staff:', selectedStaff.value)
   await fetchWorkingSlots()
+  console.log('✅ All data loaded successfully')
   // Generate dates after appointment details are loaded
   await generateAvailableDates()
   datesLoading.value = false
@@ -557,8 +561,8 @@ async function fetchAppointmentDetails() {
         currentAppointmentContact.value = appointmentData.contact
       }
       
-      // By default use the current staff ID from the appointment
-      selectedStaff.value = appointmentData.assignedUserId || 'any'
+      // Don't set selectedStaff here - wait until staff options are loaded
+      // This will be set in fetchStaffOptions() after staff data is available
       
       // Set current date and time
       const appointmentDate = new Date(appointmentData.startTime)
@@ -628,6 +632,26 @@ async function fetchStaffOptions() {
     const validStaff = staffResults.filter(Boolean)
     
     staffRadioItems.value = [...items, ...validStaff]
+    
+    // ✅ CRITICAL FIX: Set the selected staff AFTER staff options are loaded
+    // This ensures the current staff member is properly selected instead of defaulting to "any"
+    if (currentAppointment.value.assignedUserId) {
+      // Check if the current staff member is in the available options
+      const currentStaffExists = staffRadioItems.value.find(item => item.value === currentAppointment.value.assignedUserId)
+      if (currentStaffExists) {
+        selectedStaff.value = currentAppointment.value.assignedUserId
+        console.log('✅ Set selected staff to current appointment staff:', currentAppointment.value.assignedUserId)
+      } else {
+        selectedStaff.value = 'any'
+        console.log('⚠️ Current staff not available, defaulting to "any"')
+      }
+    } else {
+      selectedStaff.value = 'any'
+      console.log('⚠️ No assigned staff, defaulting to "any"')
+    }
+    
+    console.log('Staff options loaded:', staffRadioItems.value)
+    console.log('Selected staff set to:', selectedStaff.value)
   } catch (error) {
     console.error('Error fetching staff:', error)
     staffRadioItems.value = [{
@@ -636,6 +660,8 @@ async function fetchStaffOptions() {
       badge: 'Recommended',
       icon: 'i-lucide-user'
     }]
+    // Fallback to "any" if there's an error
+    selectedStaff.value = 'any'
   } finally {
     loadingStaff.value = false
   }
@@ -1051,7 +1077,13 @@ function goBackHome() {
 
 function resetForm() {
   // Reset to original appointment values
-  selectedStaff.value = currentAppointment.value.assignedUserId || 'any'
+  // ✅ FIXED: Properly set staff selection based on available options
+  if (currentAppointment.value.assignedUserId) {
+    const currentStaffExists = staffRadioItems.value.find(item => item.value === currentAppointment.value.assignedUserId)
+    selectedStaff.value = currentStaffExists ? currentAppointment.value.assignedUserId : 'any'
+  } else {
+    selectedStaff.value = 'any'
+  }
   
   const appointmentDate = new Date(currentAppointment.value.startTime)
   const dateString = appointmentDate.toISOString().split('T')[0]
