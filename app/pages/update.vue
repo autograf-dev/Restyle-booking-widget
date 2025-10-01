@@ -425,6 +425,11 @@ const selectedStaff = ref('')
 const staffRadioItems = ref([])
 const loadingStaff = ref(false)
 
+// Enhanced booking data storage
+const serviceData = ref({})
+const staffData = ref({})
+const currentAppointmentContact = ref({})
+
 const selectedCalendarDate = ref(null)
 const selectedDateString = ref('')
 const selectedSlot = ref('')
@@ -547,6 +552,11 @@ async function fetchAppointmentDetails() {
     if (appointmentData && appointmentData.id) {
       currentAppointment.value = appointmentData
       
+      // Store contact information for enhanced booking data
+      if (appointmentData.contact) {
+        currentAppointmentContact.value = appointmentData.contact
+      }
+      
       // By default use the current staff ID from the appointment
       selectedStaff.value = appointmentData.assignedUserId || 'any'
       
@@ -582,9 +592,12 @@ async function fetchStaffOptions() {
   try {
     // Fetch service details to get team members
     const serviceRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${currentAppointment.value.groupId || 'default'}`)
-    const serviceData = await serviceRes.json()
+    const serviceDataResponse = await serviceRes.json()
     
-    const serviceObj = (serviceData.calendars || []).find(s => s.id === currentAppointment.value.calendarId)
+    // Store service data for enhanced booking information
+    serviceData.value = serviceDataResponse
+    
+    const serviceObj = (serviceDataResponse.calendars || []).find(s => s.id === currentAppointment.value.calendarId)
     const teamMembers = serviceObj?.teamMembers || []
 
     const items = [{
@@ -597,10 +610,13 @@ async function fetchStaffOptions() {
     const staffPromises = teamMembers.map(async member => {
       try {
         const staffRes = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Staff?id=${member.userId}`)
-        const staffData = await staffRes.json()
+        const staffDataResponse = await staffRes.json()
+        
+        // Store staff data for enhanced booking information
+        staffData.value[member.userId] = staffDataResponse
         return {
-          label: staffData.name,
-          value: staffData.id,
+          label: staffDataResponse.name,
+          value: staffDataResponse.id,
           icon: 'i-lucide-user'
         }
       } catch (e) {
@@ -905,6 +921,32 @@ async function updateAppointment() {
 
     // Build update URL. Always include assignedUserId
     let updateUrl = `https://restyle-backend.netlify.app/.netlify/functions/updateappointment?appointmentId=${appointmentId.value}&assignedUserId=${assignedUserIdToSend}`
+    
+    // Add enhanced booking data parameters
+    const serviceName = getServiceName()
+    const servicePrice = getServicePrice()
+    const serviceDuration = getServiceDuration()
+    const staffName = getStaffName()
+    const customerName = getCustomerName()
+    
+    console.log('📝 Enhanced booking data for update:')
+    console.log('   Service Name:', serviceName)
+    console.log('   Service Price:', servicePrice)
+    console.log('   Service Duration:', serviceDuration)
+    console.log('   Staff Name:', staffName)
+    console.log('   Customer Name:', customerName)
+    
+    if (serviceName) updateUrl += `&serviceName=${encodeURIComponent(serviceName)}`
+    if (servicePrice) updateUrl += `&servicePrice=${servicePrice}`
+    if (serviceDuration) updateUrl += `&serviceDuration=${serviceDuration}`
+    if (staffName) updateUrl += `&staffName=${encodeURIComponent(staffName)}`
+    if (customerName) {
+      const nameParts = customerName.split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+      updateUrl += `&customerFirstName=${encodeURIComponent(firstName)}`
+      updateUrl += `&customerLastName=${encodeURIComponent(lastName)}`
+    }
 
     // Add time parameters if changed
     if (
@@ -1166,6 +1208,50 @@ function getServiceDurationMinutes() {
   if (!start || !end) return ''
   const mins = Math.round((end.getTime() - start.getTime()) / (60 * 1000))
   return isNaN(mins) ? '' : mins
+}
+
+// Enhanced booking data extraction functions
+function getServiceName() {
+  if (!serviceData.value.calendars || !currentAppointment.value.calendarId) return null
+  const serviceObj = serviceData.value.calendars.find(s => s.id === currentAppointment.value.calendarId)
+  return serviceObj?.name || null
+}
+
+function getServicePrice() {
+  if (!serviceData.value.calendars || !currentAppointment.value.calendarId) return null
+  const serviceObj = serviceData.value.calendars.find(s => s.id === currentAppointment.value.calendarId)
+  if (!serviceObj?.description) return null
+  
+  // Extract price from description using regex (same as in supabase.vue)
+  const priceMatch = serviceObj.description.match(/\$(\d+(?:\.\d{2})?)/)
+  return priceMatch ? parseFloat(priceMatch[1]) : null
+}
+
+function getServiceDuration() {
+  if (!serviceData.value.calendars || !currentAppointment.value.calendarId) return null
+  const serviceObj = serviceData.value.calendars.find(s => s.id === currentAppointment.value.calendarId)
+  if (!serviceObj?.slotDuration) return null
+  
+  // Convert to minutes
+  const duration = parseInt(serviceObj.slotDuration)
+  const unit = serviceObj.slotDurationUnit || 'minutes'
+  
+  if (unit === 'hours') return duration * 60
+  if (unit === 'minutes') return duration
+  return duration
+}
+
+function getStaffName() {
+  const staffId = selectedStaff.value && selectedStaff.value !== 'any' ? selectedStaff.value : currentAppointment.value.assignedUserId
+  if (!staffId || !staffData.value[staffId]) return null
+  return staffData.value[staffId].name || null
+}
+
+function getCustomerName() {
+  if (!currentAppointmentContact.value) return null
+  const firstName = currentAppointmentContact.value.firstName || ''
+  const lastName = currentAppointmentContact.value.lastName || ''
+  return `${firstName} ${lastName}`.trim() || null
 }
 
 // Utility functions for date/time formatting
