@@ -902,9 +902,6 @@ async function selectStaff(staffId) {
   console.log('🔄 Selecting staff:', staffId)
   selectedStaff.value = staffId
   
-  // ✅ FIXED: Don't auto-advance to step 2, let user manually proceed
-  // This prevents the UI from jumping around and allows proper staff selection
-  
   // Keep spinner visible while refreshing slots for new staff
   loadingSlots.value = true
   slotsForDate.value = []
@@ -928,6 +925,12 @@ async function selectStaff(staffId) {
     // Fetch slots for the first available date
     await fetchSlotsForDate(firstAvailableDate.dateString)
   }
+  
+  // ✅ FIXED: Auto-advance to step 2 (date/time selection) after staff selection
+  setTimeout(() => {
+    currentStep.value = 2
+    console.log('✅ Advanced to step 2 (date/time selection)')
+  }, 300)
   
   console.log('✅ Staff selection completed:', staffId)
 }
