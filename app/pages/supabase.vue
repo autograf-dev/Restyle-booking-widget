@@ -631,6 +631,7 @@ const loadingGroups = ref(true)
 
 const selectedService = ref('')
 const serviceRadioItems = ref([])
+const servicesFullData = ref([]) // Store full API response for price extraction
 const loadingServices = ref(false)
 
 const guestCount = ref(1)
@@ -902,6 +903,10 @@ watch(selectedDepartment, async (groupId) => {
   try {
     const res = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const data = await res.json()
+    
+    // Store full API data for price extraction
+    servicesFullData.value = data.calendars || []
+    
     serviceRadioItems.value = (data.calendars || []).map(service => ({
       label: service.name,
       value: service.id,
@@ -910,6 +915,7 @@ watch(selectedDepartment, async (groupId) => {
     selectedService.value = ''
   } catch (e) {
     serviceRadioItems.value = []
+    servicesFullData.value = []
   } finally {
     loadingServices.value = false
   }
@@ -1416,6 +1422,20 @@ function getServiceDuration(serviceId) {
   return service ? service.description.match(/Duration: (\d+) mins/)?.[1] || '' : ''
 }
 
+// Helper function to extract price from service description
+function getServicePriceFromDescription(serviceId) {
+  const service = servicesFullData.value.find(s => s.id === serviceId)
+  if (!service || !service.description) return 0
+  
+  // Extract price from description HTML like "<p style="margin:0px;color:#10182899">CA$175.00</p>"
+  const priceMatch = service.description.match(/CA\$(\d+\.?\d*)/i)
+  if (priceMatch) {
+    return parseFloat(priceMatch[1])
+  }
+  
+  return 0
+}
+
 function goToNextStepDateTime() {
   if (selectedSlot.value) {
     currentStep.value = 'StepInformation'
@@ -1607,10 +1627,33 @@ async function handleInformationSubmit() {
     const contactName = `${contactForm.value.firstName} ${contactForm.value.lastName}`.trim()
     const title = `${serviceName} - ${contactName}`
     
+    // Get service price from description
+    const servicePrice = getServicePriceFromDescription(selectedService.value)
+    
+    // Get staff name
+    const staffName = selectedStaffObj.value?.label || 'Any available staff'
+    
+    // Log enhanced booking data being sent
+    console.log('📊 Enhanced Booking Data:')
+    console.log('Service Name:', serviceName)
+    console.log('Service Price:', servicePrice)
+    console.log('Service Duration:', duration, 'minutes')
+    console.log('Staff Name:', staffName)
+    console.log('Customer Name:', `${contactForm.value.firstName} ${contactForm.value.lastName}`)
+    
+    // Build booking URL with enhanced data
     let bookUrl = `https://restyle-backend.netlify.app/.netlify/functions/Apointment?contactId=${contactId}&calendarId=${selectedService.value}&startTime=${startTime}&endTime=${endTime}&title=${encodeURIComponent(title)}`
     if (assignedUserId) bookUrl += `&assignedUserId=${assignedUserId}`
+    
+    // Add enhanced data parameters
+    bookUrl += `&serviceName=${encodeURIComponent(serviceName)}`
+    bookUrl += `&servicePrice=${servicePrice}`
+    bookUrl += `&serviceDuration=${duration}`
+    bookUrl += `&staffName=${encodeURIComponent(staffName)}`
+    bookUrl += `&customerFirstName=${encodeURIComponent(contactForm.value.firstName)}`
+    bookUrl += `&customerLastName=${encodeURIComponent(contactForm.value.lastName)}`
 
-    console.log('Booking URL:', bookUrl)
+    console.log('📡 Booking URL:', bookUrl)
     const bookRes = await fetch(bookUrl)
     const bookData = await bookRes.json()
     console.log('Booking response:', bookData)
@@ -1658,6 +1701,7 @@ function resetBooking() {
   slotsForDate.value = []
   workingSlots.value = {}
   workingSlotsLoaded.value = false
+  servicesFullData.value = []
 }
 
 function selectDepartment(value) {
