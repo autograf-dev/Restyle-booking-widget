@@ -1356,69 +1356,12 @@ function getStaffName() {
 }
 
 function getCustomerName() {
-  // ✅ FIXED: Try multiple sources for customer name
+  // ✅ SIMPLIFIED: For updates, we don't need to extract customer name from API
+  // The customer will be the same, so we can use a placeholder or skip it entirely
   
-  // First, try the contact data
-  if (currentAppointmentContact.value) {
-    const contact = currentAppointmentContact.value
-    
-    // Try different possible field combinations
-    const firstName = contact.firstName || contact.first_name || contact.givenName || contact.given_name || ''
-    const lastName = contact.lastName || contact.last_name || contact.familyName || contact.family_name || contact.surname || ''
-    
-    // If we have first/last names, combine them
-    let fullName = `${firstName} ${lastName}`.trim()
-    
-    // If no first/last names, try direct full name fields
-    if (!fullName) {
-      fullName = contact.fullName || contact.full_name || contact.name || contact.displayName || contact.display_name || ''
-    }
-    
-    // If still no name, try from nested objects
-    if (!fullName && contact.data) {
-      const dataFirstName = contact.data.firstName || contact.data.first_name || ''
-      const dataLastName = contact.data.lastName || contact.data.last_name || ''
-      fullName = `${dataFirstName} ${dataLastName}`.trim() || contact.data.fullName || contact.data.name || ''
-    }
-    
-    if (fullName) {
-      console.log('✅ Found customer name from contact data:', fullName)
-      return fullName
-    }
-  }
-  
-  // ✅ FALLBACK: Try to get customer name from appointment data itself
-  if (currentAppointment.value) {
-    const appointment = currentAppointment.value
-    
-    // Check if customer name is directly in appointment data
-    const appointmentCustomerName = appointment.customerName || appointment.customer_name || 
-                                   appointment.contactName || appointment.contact_name ||
-                                   appointment.clientName || appointment.client_name
-    
-    if (appointmentCustomerName) {
-      console.log('✅ Found customer name from appointment data:', appointmentCustomerName)
-      return appointmentCustomerName
-    }
-    
-    // Check if there's a contact object with different structure
-    if (appointment.contact && typeof appointment.contact === 'object') {
-      const contact = appointment.contact
-      const firstName = contact.firstName || contact.first_name || ''
-      const lastName = contact.lastName || contact.last_name || ''
-      const fullName = `${firstName} ${lastName}`.trim() || contact.name || contact.fullName || ''
-      
-      if (fullName) {
-        console.log('✅ Found customer name from appointment.contact:', fullName)
-        return fullName
-      }
-    }
-  }
-  
-  console.log('⚠️ No customer name found in any source')
-  console.log('Contact data:', currentAppointmentContact.value)
-  console.log('Appointment data:', currentAppointment.value)
-  
+  // Since this is an update, the customer is the same person
+  // We can either return a placeholder or null - both are fine for updates
+  console.log('📝 Update mode: Customer name not needed (same customer)')
   return null
 }
 
