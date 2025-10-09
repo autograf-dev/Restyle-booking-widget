@@ -278,8 +278,8 @@
               
               <!-- Updated date slider to show 3 dates and make them clickable -->
               <div class="space-y-6">
-                <!-- Date Slider -->
-                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <!-- Date Slider - Only show when slots are loaded -->
+                <div v-if="workingSlotsLoaded && availableDates.length > 0" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <div class="flex items-center justify-between mb-6">
                     <UButton
                       variant="ghost"
@@ -325,6 +325,16 @@
                     >
                       <UIcon name="i-lucide-chevron-right" class="text-xl" />
                     </UButton>
+                  </div>
+                </div>
+                
+                <!-- Loading state for dates -->
+                <div v-else-if="loadingSlots || !workingSlotsLoaded" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <div class="text-center py-8">
+                    <div class="text-gray-500 text-lg mb-4">Loading available dates...</div>
+                    <div class="flex justify-center space-x-4">
+                      <USkeleton class="h-20 w-24 rounded-lg bg-gray-100" v-for="i in 3" :key="i" />
+                    </div>
                   </div>
                 </div>
                 
@@ -1305,7 +1315,7 @@ watch(selectedDateString, (newDateString, oldDateString) => {
   }
 })
 
-// Prefetch working slots as soon as service is picked to avoid UI flicker
+// Clear slots when service is deselected, but don't fetch until staff is selected
 watch(selectedService, (serviceId) => {
   if (!serviceId) {
     slotsForDate.value = []
@@ -1313,7 +1323,7 @@ watch(selectedService, (serviceId) => {
     workingSlotsLoaded.value = false
     return
   }
-  fetchWorkingSlots()
+  // Don't fetch slots automatically - wait for staff selection
 })
 
 // If staff changes, refresh working slots for current service
@@ -1344,7 +1354,7 @@ watch(workingSlotsLoaded, (loaded) => {
 watch(currentStep, (step) => {
   console.log('Step changed to:', step)
   if (step === 'StepDateTime' && selectedService.value) {
-    // If working slots are loaded, generate dates and select first one
+    // Only generate dates if working slots are already loaded (from staff selection)
     if (workingSlotsLoaded.value) {
       generateAvailableDates()
       if (availableDates.value.length > 0 && !selectedDateString.value) {
@@ -1354,10 +1364,8 @@ watch(currentStep, (step) => {
           selectDate(firstDate)
         }
       }
-    } else {
-      // If working slots not loaded yet, fetch them first
-      fetchWorkingSlots()
     }
+    // Don't auto-fetch slots - wait for staff selection
   }
 })
 
