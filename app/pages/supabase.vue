@@ -331,7 +331,7 @@
                 <!-- Time slots section with prefetched weekly slots -->
                 <div class="space-y-4 times-block">
                   <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm min-h-[400px]">
-                    <!-- Show slots immediately if available, no loading skeletons -->
+                    <!-- Show slots immediately if available -->
                     <div v-if="enabledSlotsForDate.length > 0" class="space-y-4">
                       <div class="text-sm text-gray-600 mb-3">
                         Available slots for {{ selectedDateString ? formatDateForDisplay(selectedDateString) : '' }}:
@@ -353,15 +353,20 @@
                         </UButton>
                       </div>
                     </div>
-                                         <!-- Show message if no slots available for selected date -->
-                     <div v-else-if="selectedDateString && workingSlotsLoaded" class="text-center py-8">
-                       <div class="text-gray-500 text-lg">No available slots for this date</div>
-                       <div class="text-sm text-gray-400 mt-2">Please select another date</div>
-                     </div>
-                     <!-- Show message if working slots not loaded yet -->
-                     <div v-else-if="!workingSlotsLoaded" class="text-center py-8">
-                       <div class="text-gray-500 text-lg">Loading available slots...</div>
-                     </div>
+                    <!-- Show skeleton loading while fetching slots -->
+                    <div v-else-if="loadingSlots || !workingSlotsLoaded" class="space-y-4">
+                      <div class="text-sm text-gray-600 mb-3">
+                        Loading available slots...
+                      </div>
+                      <div class="grid sm:grid-cols-4 sm:gap-4 grid-cols-2 gap-3">
+                        <USkeleton class="h-12 rounded-lg bg-gray-100" v-for="i in 8" :key="i" />
+                      </div>
+                    </div>
+                    <!-- Show message only after slots are loaded and confirmed empty -->
+                    <div v-else-if="selectedDateString && workingSlotsLoaded && enabledSlotsForDate.length === 0" class="text-center py-8">
+                      <div class="text-gray-500 text-lg">No available slots for this date</div>
+                      <div class="text-sm text-gray-400 mt-2">Please select another date</div>
+                    </div>
                   </div>
                   
                   <div v-if="selectedSlot" class="p-4 bg-red-50 rounded-xl border border-red-200">
