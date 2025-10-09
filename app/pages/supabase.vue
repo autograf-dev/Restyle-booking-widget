@@ -17,47 +17,87 @@
           <template #StepDepartment>
             <div class="space-y-6 department-inner-heading">
               <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-black mb-2">Choose Your Department</h2>
-                <p class="text-gray-700">Select the service category that best fits your needs</p>
+                <h2 class="text-2xl font-bold text-black mb-2">Select Your Service</h2>
+                <p class="text-gray-700">Choose a group and a specific service you'd like to book</p>
               </div>
               
-              <form @submit.prevent="handleDepartmentSubmit">
+              <form @submit.prevent="handleServiceSubmit">
                 <div v-if="loadingGroups" class="space-y-4">
                   <USkeleton class="h-20 rounded-xl bg-gray-100" v-for="i in 6" :key="i" />
                 </div>
-                <div v-else class="grid gap-4 mb-8 same-block-content">
+                <!-- Group selection (single-line scrollable) -->
+                <div v-else class="flex gap-2.5 mb-8 overflow-x-auto whitespace-nowrap group-row">
                   <div
                     v-for="item in departmentRadioItems"
                     :key="item.value"
                     @click="selectDepartment(item.value)"
                     :class="[
-                      'cursor-pointer p-6 border-1 rounded-xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
+                      'cursor-pointer inline-flex shrink-0 items-center justify-between transition-all duration-200 hover:shadow-sm px-2.5 py-1.5 rounded-xl border-2',
                       selectedDepartment === item.value
                         ? 'bg-red-50 text-black border-red-700 shadow-sm'
                         : 'bg-white text-black border-gray-200 hover:border-red-300'
                     ]"
                   >
-                    <div class="flex items-center gap-4">
-                      <div :class="[
-                        'p-3 rounded-full',
-                        selectedDepartment === item.value ? 'bg-red-100' : 'bg-gray-100'
-                      ]">
+                    <div class="flex items-center gap-2">
+                      <div :class="['p-0']">
                         <UIcon :name="item.icon || 'i-lucide-user-female'" :class="[
-                          'text-2xl',
+                          'w-4 h-4',
                           selectedDepartment === item.value ? 'text-red-700' : 'text-gray-600'
                         ]" />
                       </div>
                       <div>
-                        <span class="text-xl font-semibold block text-black">{{ item.label }}</span>
-                        <span class="text-sm text-gray-600">{{ item.description }}</span>
+                        <span class="text-xs font-medium block text-black">{{ item.label }}</span>
                       </div>
                     </div>
-                    <div v-if="selectedDepartment === item.value" class="text-red-700">
-                      <UIcon name="i-lucide-check-circle" class="text-2xl" />
+                    <div v-if="selectedDepartment === item.value" class="text-red-700 ml-1.5">
+                      <UIcon name="i-lucide-check-circle" class="w-4 h-4" />
                     </div>
                   </div>
                 </div>
                 
+                <!-- Services list for selected group (3 per row) -->
+                <div v-if="selectedDepartment" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 service-grid">
+                  <div
+                    v-for="item in serviceRadioItems"
+                    :key="item.value"
+                    @click="selectService(item.value)"
+                    :class="[
+                      'cursor-pointer p-4 border-2 rounded-2xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
+                      selectedService === item.value
+                        ? 'bg-red-50 text-black border-red-700 shadow-sm'
+                        : 'bg-white text-black border-gray-200 hover:border-red-300'
+                    ]"
+                  >
+                    <div class="flex items-center gap-3.5 w-full">
+                      <div :class="[
+                        'w-10 h-10 rounded-full bg-red-100 flex items-center justify-center',
+                        selectedService === item.value ? 'text-red-700' : 'text-gray-600'
+                      ]">
+                        <UIcon name="i-lucide-scissors" :class="[
+                          'w-5 h-5',
+                          selectedService === item.value ? 'text-red-700' : 'text-gray-600'
+                        ]" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-sm font-semibold text-black">{{ item.label }}</div>
+                        <div class="mt-1.5 flex items-center gap-4 flex-wrap">
+                          <span class="inline-flex items-center gap-1 text-xs text-neutral-600">
+                            <UIcon name="i-lucide-clock" class="w-3.5 h-3.5" />
+                            {{ getServiceDuration(item.value) }} mins
+                          </span>
+                          <span class="inline-flex items-center gap-1 text-[11px]">
+                            <UIcon name="i-lucide-users" class="w-3.5 h-3.5" />
+                            {{ (servicesFullData.find(s => s.id === item.value)?.teamMembers?.length) ?? 0 }} staff available
+                          </span>
+                        </div>
+                      </div>
+                      <div v-if="selectedService === item.value" class="text-red-700">
+                        <UIcon name="i-lucide-check-circle" class="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="flex gap-4 same-btn-prev-next">
                   <UButton
                     type="button"
@@ -75,78 +115,7 @@
                     type="submit"
                     color="primary"
                     size="lg"
-                    :disabled="!selectedDepartment || loadingGroups"
-                    class="flex-1 bg-red-700 hover:bg-red-700 text-white"
-                  >
-                    Continue
-                    <UIcon name="i-lucide-arrow-right" class="ml-2" />
-                  </UButton>
-                </div>
-              </form>
-            </div>
-          </template>
-
-          <template #StepService>
-            <div class="space-y-6">
-              <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-black mb-2">Select Your Service</h2>
-                <p class="text-gray-700">Choose the specific service you'd like to book</p>
-              </div>
-              
-              <form @submit.prevent="handleServiceSubmit">
-                <div v-if="loadingServices" class="space-y-4">
-                  <USkeleton class="h-20 rounded-xl bg-gray-100" v-for="i in 3" :key="i" />
-                </div>
-                <div v-else class="grid gap-4 mb-8 same-block-content">
-                  <div
-                    v-for="item in serviceRadioItems"
-                    :key="item.value"
-                    @click="selectService(item.value)"
-                    :class="[
-                      'cursor-pointer p-6 border-1 rounded-xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
-                      selectedService === item.value
-                        ? 'bg-red-50 text-black border-red-700 shadow-sm'
-                        : 'bg-white text-black border-gray-200 hover:border-red-300'
-                    ]"
-                  >
-                    <div class="flex items-center gap-4">
-                      <div :class="[
-                        'p-3 rounded-full',
-                        selectedService === item.value ? 'bg-red-100' : 'bg-gray-100'
-                      ]">
-                        <UIcon name="i-lucide-scissors" :class="[
-                          'text-2xl',
-                          selectedService === item.value ? 'text-red-700' : 'text-gray-600'
-                        ]" />
-                      </div>
-                      <div>
-                        <span class="text-xl font-semibold block text-black">{{ item.label }}</span>
-                        <span class="text-sm text-gray-600">{{ item.description }}</span>
-                      </div>
-                    </div>
-                    <div v-if="selectedService === item.value" class="text-red-700">
-                      <UIcon name="i-lucide-check-circle" class="text-2xl" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="flex gap-4 same-btn-prev-next">
-                  <UButton
-                    type="button"
-                    color="gray"
-                    variant="soft"
-                    size="lg"
-                    class="flex-1"
-                    @click="goToPreviousStep"
-                  >
-                    <UIcon name="i-lucide-arrow-left" class="mr-2" />
-                    Previous
-                  </UButton>
-                  <UButton
-                    type="submit"
-                    color="primary"
-                    size="lg"
-                    :disabled="!selectedService || loadingServices"
+                    :disabled="!selectedService || loadingGroups"
                     class="flex-1 bg-red-700 hover:bg-red-700 text-white"
                   >
                     Continue
@@ -721,16 +690,10 @@ const bookingResponse = ref(null)
 
 const steps = [
   {
-    title: 'Department',
-    icon: 'i-lucide-building',
-    value: 'StepDepartment',
-    slot: 'StepDepartment'
-  },
-  {
     title: 'Service',
     icon: 'i-lucide-scissors',
-    value: 'StepService',
-    slot: 'StepService'
+    value: 'StepDepartment',
+    slot: 'StepDepartment'
   },
   {
     title: 'Staff',
@@ -878,7 +841,12 @@ onMounted(async () => {
       description: group.description || '',
       icon: getGroupIcon(group.name)
     }))
-    selectedDepartment.value = ''
+    // Auto-select first group by default if none preselected
+    if (!preselectedDepartmentId.value && departmentRadioItems.value.length > 0) {
+      selectedDepartment.value = departmentRadioItems.value[0].value
+    } else {
+      selectedDepartment.value = ''
+    }
 
     groupTabs.value = data.groups.map(group => ({
       label: group.name,
@@ -1388,10 +1356,8 @@ watch(currentStep, (step) => {
 
 // Previous step logic
 function goToPreviousStep() {
-  if (currentStep.value === 'StepService') {
+  if (currentStep.value === 'StepStaff') {
     currentStep.value = 'StepDepartment'
-  } else if (currentStep.value === 'StepStaff') {
-    currentStep.value = 'StepService'
   } else if (currentStep.value === 'StepDateTime') {
     currentStep.value = 'StepStaff'
   } else if (currentStep.value === 'StepInformation') {
@@ -1400,9 +1366,7 @@ function goToPreviousStep() {
 }
 
 function handleDepartmentSubmit() {
-  if (selectedDepartment.value) {
-    currentStep.value = 'StepService'
-  }
+  // No-op in merged step
 }
 
 function handleServiceSubmit() {
@@ -1708,10 +1672,6 @@ function resetBooking() {
 
 function selectDepartment(value) {
   selectedDepartment.value = value
-  // Wait for UI update, then move to next step
-  setTimeout(() => {
-    handleDepartmentSubmit()
-  }, 100)
 }
 
 function selectService(value) {
@@ -1855,6 +1815,68 @@ watch([departmentRadioItems, preselectedDepartmentId], ([items, preId]) => {
 .information-depaerment-form :deep(.u-checkbox__label),
 .information-depaerment-form :deep(label) {
   color: #364a63 !important;
+}
+.group-row::-webkit-scrollbar {
+  height: 6px;
+}
+.group-row::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 6px;
+}
+.group-chip {
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+}
+.chip-inactive:hover { border-color: #f3b4b4; background: #fdf5f5; }
+.chip-active {
+  background: #fbf4f5;
+  border-color: #751A29;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.07);
+}
+.chip-label {
+  color: #111827;
+  font-weight: 600;
+  font-size: 16px;
+}
+.chip-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.chip-icon-inactive { background: transparent; color: #4b5563; }
+.chip-icon-active   { background: transparent; color: #751A29; }
+.service-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1023px) {
+  .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .service-grid { grid-template-columns: 1fr; }
+}
+.service-grid .cursor-pointer {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(17,24,39,0.04);
+}
+.service-grid .cursor-pointer:hover {
+  border-color: #f3b4b4;
+}
+.service-grid .bg-red-50 { background: #fbf4f5 !important; }
+.service-grid .border-red-700 { border-color: #751A29 !important; }
+.service-grid .w-12.h-12 { border-radius: 12px; }
+.service-grid .w-12.h-12.bg-red-100 { background: #fde7ea !important; color: #751A29 !important; }
+.service-grid .mt-2.text-sm.text-gray-600 span + span { position: relative; padding-left: 14px; }
+.service-grid .mt-2.text-sm.text-gray-600 span + span::before {
+  content: '';
+  width: 4px; height: 4px; border-radius: 9999px; background: #d1d5db;
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
 }
 .department-inner :deep(.text-sm),
 .department-inner .text-sm {
