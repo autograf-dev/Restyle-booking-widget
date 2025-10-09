@@ -454,19 +454,19 @@
                      
                      <!-- USA Phone Number with Flag -->
                      <div class="space-y-3">
-                       <label class="block text-sm font-medium text-gray-700 text-black">Phone Number *</label>
+                      <label class="block text-sm font-medium text-gray-700 text-black">Phone Number (Canada) *</label>
                        <div class="flex items-center phone-input-container">
                        
                          <UInput
                            v-model="contactForm.phone"
-                           placeholder="+1 (555) 123-4567"
+                          placeholder="+1 (604) 555-1234"
                            size="lg"
                            :error="validationErrors.phone"
                            class="flex-1 phone-input"
                            required
                          />
                        </div>
-                       <div class="text-xs text-gray-500">Enter your 10-digit US phone number</div>
+                       <div class="text-xs text-gray-500">Enter your 10-digit Canadian phone number</div>
                      </div>
                     
                                          <UCheckbox
@@ -653,13 +653,13 @@ const isFormValid = computed(() => {
   return contactForm.value.firstName.trim() && 
          contactForm.value.lastName.trim() && 
          contactForm.value.phone.trim() && 
-         isValidUSPhone(contactForm.value.phone)
+         isValidCAPhone(contactForm.value.phone)
 })
 
-function isValidUSPhone(phone) {
+function isValidCAPhone(phone) {
   // Remove all non-digit characters
   const cleanPhone = phone.replace(/\D/g, '')
-  // Must be exactly 10 digits for US phone number
+  // Canada uses NANP: exactly 10 digits (area code + number)
   return cleanPhone.length === 10
 }
 
@@ -678,8 +678,8 @@ function validateForm() {
   }
   if (!contactForm.value.phone.trim()) {
     validationErrors.value.phone = 'Phone number is required'
-  } else if (!isValidUSPhone(contactForm.value.phone)) {
-    validationErrors.value.phone = 'Please enter a valid 10-digit US phone number'
+  } else if (!isValidCAPhone(contactForm.value.phone)) {
+    validationErrors.value.phone = 'Please enter a valid 10-digit Canadian phone number'
   }
 
   return Object.values(validationErrors.value).every(error => !error)
