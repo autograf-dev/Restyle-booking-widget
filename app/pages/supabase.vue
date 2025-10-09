@@ -1002,9 +1002,9 @@ async function fetchWorkingSlots() {
 
   try {
     // Use WorkingSlots endpoint - returns 7 working days skipping weekends
-    // Include userId parameter when staff is selected for filtered slots
+    // Only include userId parameter when specific staff is selected (not "any available")
     let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
-    if (userId) {
+    if (userId && selectedStaff.value !== 'any') {
       apiUrl += `&userId=${userId}`
       console.log('Fetching slots for specific staff userId:', userId)
     } else {
@@ -1026,27 +1026,6 @@ async function fetchWorkingSlots() {
       console.log('Working slots loaded successfully:', data.slots)
     } else {
       console.error('Invalid working slots response format:', data)
-      // If specific staff selected but no slots returned, try fetching for all staff
-      if (userId && selectedStaff.value !== 'any') {
-        console.log('No slots found for specific staff, trying to fetch all available slots')
-        const fallbackUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
-        console.log('Fallback API URL:', fallbackUrl)
-        
-        try {
-          const fallbackResponse = await fetch(fallbackUrl)
-          const fallbackData = await fallbackResponse.json()
-          console.log('Fallback API response:', fallbackData)
-          
-          if (fallbackData.slots && fallbackData.calendarId) {
-            workingSlots.value = fallbackData.slots
-            workingSlotsLoaded.value = true
-            generateAvailableDates()
-            console.log('Fallback slots loaded successfully:', fallbackData.slots)
-          }
-        } catch (fallbackError) {
-          console.error('Fallback request also failed:', fallbackError)
-        }
-      }
     }
   } catch (error) {
     console.error('Error fetching working slots:', error)
