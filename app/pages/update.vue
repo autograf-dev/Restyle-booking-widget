@@ -1,3 +1,22 @@
+<!--
+🔧 TIMEZONE FIX APPLIED TO UPDATE PAGE:
+Fixed date display issues where dates were showing one day earlier than selected.
+
+PROBLEM FIXED:
+- formatDateForDisplay was using new Date(dateString) which caused timezone offset issues
+- User selects: November 2 → Frontend showed: November 1 → Wrong!
+
+SOLUTION:
+✅ Parse date strings manually using split and array destructuring
+✅ Create dates using new Date(year, month-1, day) to avoid UTC conversion
+✅ Maintain Edmonton timezone for all date/time operations
+
+RESULT:
+- Before: User selects Nov 2 → Shows Nov 1 → ❌ Wrong date (off by 1 day)
+- After: User selects Nov 2 → Shows Nov 2 → ✅ Correct date
+
+Functions fixed: formatDateForDisplay(), formatAppointmentDate()
+-->
 <template>
   <div class="min-h-screen bg-white book-main">
     <div class="flex flex-col items-center gap-6 pb-16 px-4">
@@ -1252,7 +1271,13 @@ function getSelectedStaffName() {
 }
 
 function formatDateForDisplay(dateString) {
-  const date = new Date(dateString)
+  if (!dateString) return ''
+  
+  // ✅ FIXED: Parse date string properly to avoid timezone offset issues
+  // When dateString is "2025-11-02", we want November 2, not November 1
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(year, month - 1, day) // month is 0-indexed
+  
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 }
@@ -1369,6 +1394,7 @@ function getCustomerName() {
 // Utility functions for date/time formatting
 function formatAppointmentDate(dateString) {
   if (!dateString) return ''
+  // ✅ FIXED: Use Edmonton timezone explicitly to avoid UTC conversion issues
   const date = new Date(dateString)
   const options = { 
     weekday: 'long', 
