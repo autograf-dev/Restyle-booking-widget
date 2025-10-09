@@ -34,23 +34,20 @@
                     :class="[
                       'cursor-pointer inline-flex shrink-0 items-center justify-between transition-all duration-200 hover:shadow-sm px-2.5 py-1.5 rounded-xl border-2',
                       selectedDepartment === item.value
-                        ? 'bg-red-50 text-black border-red-700 shadow-sm'
+                        ? 'bg-[#751A29] text-white border-[#751A29] shadow-sm'
                         : 'bg-white text-black border-gray-200 hover:border-red-300'
                     ]"
                   >
-                    <div class="flex items-center gap-2">
-                      <div :class="['p-0']">
+                    <div class="flex items-center gap-2 vertical-center">
+                      <div :class="['pt-2']">
                         <UIcon :name="item.icon || 'i-lucide-user-female'" :class="[
                           'w-4 h-4',
-                          selectedDepartment === item.value ? 'text-red-700' : 'text-gray-600'
+                          selectedDepartment === item.value ? 'text-white' : 'text-gray-500'
                         ]" />
                       </div>
-                      <div>
-                        <span class="text-xs font-medium block text-black">{{ item.label }}</span>
+                      <div class="flex items-center">
+                        <span class="text-xs font-medium leading-none block" :class="selectedDepartment === item.value ? 'text-white' : 'text-gray-700'">{{ item.label }}</span>
                       </div>
-                    </div>
-                    <div v-if="selectedDepartment === item.value" class="text-red-700 ml-1.5">
-                      <UIcon name="i-lucide-check-circle" class="w-4 h-4" />
                     </div>
                   </div>
                 </div>
@@ -83,10 +80,10 @@
                         ]" />
                       </div>
                       <div class="flex-1">
-                        <div class="text-sm font-semibold text-black">{{ item.label }}</div>
+                        <div class="text-sm font-semibold text-[#000]">{{ item.label }}</div>
                         <div class="mt-1.5 flex items-center gap-4 flex-wrap">
                           <span class="inline-flex items-center gap-1 text-xs text-neutral-600">
-                            <UIcon name="i-lucide-clock" class="w-3.5 h-3.5" />
+                            <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-[#000]" />
                             {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
                           </span>
                           <span class="inline-flex items-center gap-1 text-[11px]">
@@ -736,13 +733,13 @@ const steps = [
 // Map group names to icons
 function getGroupIcon(name) {
   switch (name.toLowerCase()) {
-    case 'ladies': return 'i-lucide-user';
+    case 'ladies': return 'i-lucide-heart';
     case 'gents': return 'i-lucide-user';
     case 'laser hair removal': return 'i-lucide-zap';
     case 'waxing': return 'i-lucide-droplet';
-    case 'threading': return 'i-lucide-wand';
-    case 'bridal': return 'i-lucide-diamond';
-    case 'facials': return 'i-lucide-smile';
+    case 'threading': return 'i-lucide-scissors';
+    case 'bridal': return 'i-lucide-crown';
+    case 'facials': return 'i-lucide-sparkles';
     default: return 'i-lucide-user';
   }
 }
