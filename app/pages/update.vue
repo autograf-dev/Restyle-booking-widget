@@ -38,6 +38,24 @@ RESULT:
 - After: Reschedule 2.5 hour service → Only shows slots with 150+ mins → Correct ✅
 
 Key changes: fetchWorkingSlots() now includes serviceDuration parameter
+
+3. DATE FILTERING FIX:
+Excluded today's date from available rescheduling slots - only show slots from tomorrow onwards.
+
+PROBLEM FIXED:
+- Users could reschedule appointments to today
+- Same-day rescheduling can cause scheduling conflicts and rushed preparations
+
+SOLUTION IMPLEMENTED:
+✅ Filter working slots to exclude today (dateString >= tomorrowDateString)
+✅ Start date generation loop from i=1 (tomorrow) instead of i=0 (today)
+✅ Update labels to start with "TOMORROW" instead of "TODAY"
+
+RESULT:
+- Before: Shows "TODAY" as first option → Can reschedule to same day
+- After: Shows "TOMORROW" as first option → Only future dates allowed ✅
+
+Key changes: generateAvailableDates() now starts from tomorrow
 -->
 <template>
   <div class="min-h-screen bg-white book-main">
@@ -815,9 +833,13 @@ async function fetchWorkingSlots() {
 async function generateAvailableDates() {
   const dates = []
   
-  // Get today's date string for comparison (YYYY-MM-DD format)
+  // ✅ FIXED: Get today's and tomorrow's date strings for comparison (YYYY-MM-DD format)
   const today = new Date()
   const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const tomorrowDateString = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
   
   const currentBookingDate = currentAppointment.value.startTime ? new Date(currentAppointment.value.startTime) : null
   
@@ -825,8 +847,8 @@ async function generateAvailableDates() {
   if (workingSlotsLoaded.value && Object.keys(workingSlots.value).length > 0) {
     const workingDates = Object.keys(workingSlots.value)
       .filter(dateString => {
-        // Only include dates from today onwards (no past dates)
-        return dateString >= todayDateString
+        // ✅ FIXED: Only include dates from TOMORROW onwards (exclude today)
+        return dateString >= tomorrowDateString
       })
       .sort()
     
@@ -860,9 +882,9 @@ async function generateAvailableDates() {
       })
     })
   } else {
-    // Fallback to generating next 7 working days if no working slots
+    // ✅ FIXED: Fallback to generating next 7 working days starting from TOMORROW
     let workingDaysCount = 0
-    let i = 0
+    let i = 1 // Start from tomorrow (i=1 instead of i=0)
     
     while (workingDaysCount < 7 && i < 14) {
       const date = new Date(today)
@@ -879,9 +901,10 @@ async function generateAvailableDates() {
       const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
       const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       
+      // ✅ FIXED: Labels now start from TOMORROW (no TODAY label)
       let label = ''
-      if (workingDaysCount === 0) label = 'TODAY'
-      else if (workingDaysCount === 1) label = 'TOMORROW'
+      if (workingDaysCount === 0) label = 'TOMORROW'
+      else if (workingDaysCount === 1) label = 'THIS WEEK'
       else if (workingDaysCount <= 5) label = 'THIS WEEK'
       else label = 'NEXT WEEK'
       
