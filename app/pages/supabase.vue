@@ -56,7 +56,11 @@
                 </div>
                 
                 <!-- Services list for selected group (3 per row) -->
-                <div v-if="selectedDepartment" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 service-grid">
+                <div v-if="selectedDepartment">
+                  <div v-if="loadingServices" class="space-y-2 mb-6">
+                    <USkeleton class="h-20 rounded-2xl bg-gray-100" v-for="i in 3" :key="i" />
+                  </div>
+                  <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6 service-grid">
                   <div
                     v-for="item in serviceRadioItems"
                     :key="item.value"
@@ -83,7 +87,7 @@
                         <div class="mt-1.5 flex items-center gap-4 flex-wrap">
                           <span class="inline-flex items-center gap-1 text-xs text-neutral-600">
                             <UIcon name="i-lucide-clock" class="w-3.5 h-3.5" />
-                            {{ getServiceDuration(item.value) }} mins
+                            {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
                           </span>
                           <span class="inline-flex items-center gap-1 text-[11px]">
                             <UIcon name="i-lucide-users" class="w-3.5 h-3.5" />
@@ -95,6 +99,7 @@
                         <UIcon name="i-lucide-check-circle" class="w-5 h-5" />
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
 
@@ -143,7 +148,7 @@
                   <div class="font-bold text-lg mb-1 text-black">Service</div>
                   <div class="text-gray-700">{{ selectedServiceObj?.label }}</div>
                   <div class="text-sm text-red-700 font-semibold mt-1">
-                    Duration: {{ getServiceDuration(selectedService) }} mins
+                    Duration: {{ formatDurationMins(getServiceDuration(selectedService)) }}
                   </div>
                 </div>
                 <!-- Guests Card with Add Guest logic -->
@@ -508,7 +513,7 @@
                         </div>
                         <div class="flex items-center gap-3">
                           <UIcon name="i-lucide-hourglass" class="text-xl text-red-700" />
-                          <span class="text-gray-700">{{ getServiceDuration(selectedService) }} minutes</span>
+                          <span class="text-gray-700">{{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
                         </div>
                        
                       </div>
@@ -622,6 +627,13 @@ const loadingStaff = ref(false)
 const selectedStaffObj = computed(() =>
   staffRadioItems.value.find(item => item.value === selectedStaff.value)
 )
+function formatDurationMins(mins) {
+  const m = Number(mins || 0)
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  if (h > 0) return r > 0 ? `${h}h ${r}m` : `${h}h`
+  return `${r}m`
+}
 
 // Calendar and slots
 const selectedCalendarDate = ref(null)
@@ -869,22 +881,35 @@ watch(selectedDepartment, async (groupId) => {
   loadingServices.value = true
   selectedService.value = ''
   try {
+    // Ensure skeleton shows at least 1s for smoother UX
+    var start = Date.now()
     const res = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const data = await res.json()
     
     // Store full API data for price extraction
     servicesFullData.value = data.calendars || []
     
-    serviceRadioItems.value = (data.calendars || []).map(service => ({
-      label: service.name,
-      value: service.id,
-      description: `Duration: ${service.slotDuration} mins | Staff: ${service.teamMembers?.length ?? 0}`
-    }))
+    serviceRadioItems.value = (data.calendars || []).map(service => {
+      const raw = Number(service.slotDuration ?? service.duration ?? 0)
+      const unit = String(service.slotDurationUnit ?? service.durationUnit ?? '').toLowerCase()
+      const minutes = raw > 0 ? (unit === 'hours' || unit === 'hour' ? raw * 60 : raw) : 0
+      return {
+        label: service.name,
+        value: service.id,
+        description: `Duration: ${minutes} mins | Staff: ${service.teamMembers?.length ?? 0}`,
+        durationMinutes: minutes
+      }
+    })
     selectedService.value = ''
   } catch (e) {
     serviceRadioItems.value = []
     servicesFullData.value = []
   } finally {
+    const elapsed = Date.now() - start
+    const remaining = 1000 - elapsed
+    if (remaining > 0) {
+      await new Promise(r => setTimeout(r, remaining))
+    }
     loadingServices.value = false
   }
 })
@@ -1383,7 +1408,7 @@ function handleStaffSubmit() {
 
 function getServiceDuration(serviceId) {
   const service = serviceRadioItems.value.find(s => s.value === serviceId)
-  return service ? service.description.match(/Duration: (\d+) mins/)?.[1] || '' : ''
+  return service?.durationMinutes || 0
 }
 
 // Helper function to extract price from service description
@@ -1568,7 +1593,7 @@ async function handleInformationSubmit() {
 
     const startTime = denverWallTimeToUtcIso(y, m, d, hour, minute)
 
-    const duration = parseInt(getServiceDuration(selectedService.value)) || 120
+    const duration = Number(getServiceDuration(selectedService.value)) || 120
     const jsEnd = new Date(new Date(startTime).getTime() + duration * 60 * 1000)
     const endTime = jsEnd.toISOString()
 
