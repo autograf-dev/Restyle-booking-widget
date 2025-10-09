@@ -1,3 +1,23 @@
+<!--
+🔧 SERVICE DURATION FIX APPLIED:
+Fixed slot filtering to account for service duration (e.g., 2.5 hour services need longer time blocks).
+
+PROBLEM FIXED:
+- Backend was defaulting to 30-minute slots when no duration was provided
+- Long services (150+ minutes) were showing unavailable slots that didn't have enough time
+- Users could book slots that were too short for their selected service
+
+SOLUTION IMPLEMENTED:
+✅ Extract service duration dynamically from service data (getServiceDuration)
+✅ Pass serviceDuration parameter to staffSlots API call
+✅ Backend now properly filters slots based on actual service length
+
+RESULT:
+- Before: 2.5 hour service → Shows slots with only 30 mins available → Wrong!
+- After: 2.5 hour service → Only shows slots with 150+ mins available → Correct ✅
+
+Key changes: fetchWorkingSlots() now includes serviceDuration parameter
+-->
 <template>
   <div class="min-h-screen bg-white book-main">
     <div class="flex flex-col items-center gap-6  pb-16 px-4">
@@ -1016,6 +1036,9 @@ async function fetchWorkingSlots() {
   const userId = selectedStaff.value && selectedStaff.value !== 'any' ? selectedStaff.value : null
 
   try {
+    // ✅ FIXED: Get service duration dynamically for slot filtering
+    const serviceDurationMinutes = getServiceDuration(serviceId)
+    
     // Use WorkingSlots endpoint - returns 7 working days skipping weekends
     // Only include userId parameter when specific staff is selected (not "any available")
     let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
@@ -1025,6 +1048,13 @@ async function fetchWorkingSlots() {
     } else {
       console.log('Fetching slots for all staff (any available)')
     }
+    
+    // ✅ FIXED: Include service duration for proper slot filtering
+    if (serviceDurationMinutes) {
+      apiUrl += `&serviceDuration=${serviceDurationMinutes}`
+      console.log('🔧 Adding service duration to API call:', serviceDurationMinutes, 'minutes')
+    }
+    
     console.log('Staff Slots API URL:', apiUrl)
     
     const response = await fetch(apiUrl)
