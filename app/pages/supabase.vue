@@ -200,30 +200,26 @@
                 <div v-if="loadingStaff" class="space-y-4">
                   <USkeleton class="h-20 rounded-xl bg-gray-100" v-for="i in staffRadioItems.length || 3" :key="i" />
                 </div>
-                <div v-else class="grid gap-4 mb-8 same-block-content">
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
                   <div
                     v-for="item in staffRadioItems"
                     :key="item.value"
                     @click="selectStaff(item.value)"
                     :class="[
-                      'cursor-pointer p-6 border-1 rounded-xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
+                      'cursor-pointer p-4 border-2 rounded-2xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
                       selectedStaff === item.value
                         ? 'bg-red-50 text-black border-red-700 shadow-sm'
                         : 'bg-white text-black border-gray-200 hover:border-red-300'
                     ]"
                   >
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3.5 w-full">
                       <div :class="[
-                        'p-3 rounded-full',
-                        selectedStaff === item.value ? 'bg-red-100' : 'bg-gray-100'
+                        'w-10 h-10 rounded-full bg-red-100 flex items-center justify-center'
                       ]">
-                        <UIcon :name="item.icon" :class="[
-                          'text-2xl',
-                          selectedStaff === item.value ? 'text-red-700' : 'text-gray-600'
-                        ]" />
+                        <UIcon :name="item.icon" class="w-5 h-5 text-[oklch(0.38_0.12_16.62)]" />
                       </div>
-                      <div>
-                        <span class="text-xl font-semibold text-black">{{ item.label }}</span>
+                      <div class="flex-1">
+                        <span class="text-sm font-semibold text-gray-700">{{ item.label }}</span>
                         <span v-if="item.badge" :class="[
                           'ml-3 px-3 py-1 rounded-full text-xs font-medium',
                           selectedStaff === item.value ? 'bg-red-100 text-red-700' : 'bg-red-500 text-white'
@@ -231,7 +227,7 @@
                       </div>
                     </div>
                     <div v-if="selectedStaff === item.value" class="text-red-700">
-                      <UIcon name="i-lucide-check-circle" class="text-2xl" />
+                      <UIcon name="i-lucide-check-circle" class="w-5 h-5" />
                     </div>
                   </div>
                 </div>
