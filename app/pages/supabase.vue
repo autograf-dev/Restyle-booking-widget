@@ -847,7 +847,13 @@ onMounted(async () => {
     const res = await fetch('https://restyle-backend.netlify.app/.netlify/functions/supabasegroups')
     const data = await res.json()
 
-    departmentRadioItems.value = data.groups.map(group => ({
+    let groups = data.groups || []
+    if (filterGroupName.value) {
+      const wanted = filterGroupName.value.toLowerCase()
+      groups = groups.filter(g => String(g.name || '').toLowerCase() === wanted)
+    }
+
+    departmentRadioItems.value = groups.map(group => ({
       label: group.name,
       value: group.id,
       description: group.description || '',
@@ -860,7 +866,7 @@ onMounted(async () => {
       selectedDepartment.value = ''
     }
 
-    groupTabs.value = data.groups.map(group => ({
+    groupTabs.value = groups.map(group => ({
       label: group.name,
       value: group.id,
       icon: getGroupIcon(group.name),
@@ -1716,6 +1722,7 @@ function selectStaff(value) {
 // --- Add this at the top of <script setup> ---
 const route = typeof useRoute === 'function' ? useRoute() : null
 const preselectedDepartmentId = ref('')
+const filterGroupName = ref('')
 
 // --- On mount, check for ?id=... in URL and preselect department ---
 onMounted(async () => {
@@ -1732,6 +1739,18 @@ onMounted(async () => {
   if (idFromQuery) {
     preselectedDepartmentId.value = idFromQuery
   }
+
+  // Read optional ?group= (e.g., Ladies)
+  try {
+    let g = ''
+    if (route && route.query && route.query.group) {
+      g = String(route.query.group || '')
+    } else if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      g = String(params.get('group') || '')
+    }
+    filterGroupName.value = g.trim()
+  } catch {}
 })
 
 // --- After departmentRadioItems are loaded, auto-select department if preselectedDepartmentId is set ---
