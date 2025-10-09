@@ -75,19 +75,18 @@
                         selectedService === item.value ? 'text-red-700' : 'text-gray-600'
                       ]">
                         <UIcon name="i-lucide-scissors" :class="[
-                          'w-5 h-5',
-                          selectedService === item.value ? 'text-red-700' : 'text-gray-600'
+                          'w-5 h-5 text-[oklch(0.38_0.12_16.62)]'
                         ]" />
                       </div>
                       <div class="flex-1">
-                        <div class="text-sm font-semibold text-[#000]">{{ item.label }}</div>
+                        <div class="text-sm font-semibold text-gray-700">{{ item.label }}</div>
                         <div class="mt-1.5 flex items-center gap-4 flex-wrap">
-                          <span class="inline-flex items-center gap-1 text-xs text-neutral-600">
-                            <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-[#000]" />
+                          <span class="inline-flex items-center gap-1 text-xs text-gray-700">
+                            <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-gray-700" />
                             {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
                           </span>
-                          <span class="inline-flex items-center gap-1 text-[11px]">
-                            <UIcon name="i-lucide-users" class="w-3.5 h-3.5" />
+                          <span class="inline-flex items-center gap-1 text-[11px] text-gray-700">
+                            <UIcon name="i-lucide-users" class="w-3.5 h-3.5 text-gray-700" />
                             {{ (servicesFullData.find(s => s.id === item.value)?.teamMembers?.length) ?? 0 }} staff available
                           </span>
                         </div>
