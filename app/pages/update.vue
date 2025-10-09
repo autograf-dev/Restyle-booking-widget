@@ -1,5 +1,7 @@
 <!--
-🔧 TIMEZONE FIX APPLIED TO UPDATE PAGE:
+🔧 TIMEZONE & SERVICE DURATION FIXES APPLIED TO UPDATE PAGE:
+
+1. TIMEZONE/DATE DISPLAY FIX:
 Fixed date display issues where dates were showing one day earlier than selected.
 
 PROBLEM FIXED:
@@ -16,6 +18,26 @@ RESULT:
 - After: User selects Nov 2 → Shows Nov 2 → ✅ Correct date
 
 Functions fixed: formatDateForDisplay(), formatAppointmentDate()
+
+2. SERVICE DURATION FIX:
+Fixed slot filtering to account for service duration when rescheduling appointments.
+
+PROBLEM FIXED:
+- Backend was defaulting to 30-minute slots when no duration was provided
+- Long services (150+ minutes) were showing unavailable slots that didn't have enough time
+- Rescheduling 2.5 hour appointments showed slots that were too short
+
+SOLUTION IMPLEMENTED:
+✅ Extract service duration dynamically from appointment data (getServiceDurationMinutes)
+✅ Fallback to service data if appointment duration not available (getServiceDuration)
+✅ Pass serviceDuration parameter to staffSlots API call
+✅ Backend now properly filters slots based on actual service length
+
+RESULT:
+- Before: Reschedule 2.5 hour service → Shows slots with only 30 mins → Wrong!
+- After: Reschedule 2.5 hour service → Only shows slots with 150+ mins → Correct ✅
+
+Key changes: fetchWorkingSlots() now includes serviceDuration parameter
 -->
 <template>
   <div class="min-h-screen bg-white book-main">
@@ -749,13 +771,22 @@ async function fetchWorkingSlots() {
     }
   } catch {}
 
-  // Build API URL with userId parameter for filtered slots
+  // ✅ FIXED: Get service duration dynamically from appointment or service data
+  const serviceDurationMinutes = getServiceDurationMinutes() || getServiceDuration()
+  
+  // Build API URL with userId and serviceDuration parameters for filtered slots
   let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}${startDateParam}`
   if (userId) {
     apiUrl += `&userId=${userId}`
   }
+  
+  // ✅ FIXED: Include service duration for proper slot filtering
+  if (serviceDurationMinutes) {
+    apiUrl += `&serviceDuration=${serviceDurationMinutes}`
+    console.log('🔧 Adding service duration to API call:', serviceDurationMinutes, 'minutes')
+  }
 
-  console.log('Fetching working slots for service:', serviceId, 'and staff:', userId)
+  console.log('Fetching working slots for service:', serviceId, 'staff:', userId, 'duration:', serviceDurationMinutes, 'minutes')
 
   try {
     const response = await fetch(apiUrl)
