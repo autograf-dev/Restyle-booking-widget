@@ -42,16 +42,6 @@ Key changes: generateAvailableDates() now starts from tomorrow
 <template>
   <div class="min-h-screen bg-white book-main">
     <div class="flex flex-col items-center gap-6  pb-16 px-4">
-  <!--     
-      <div class="text-center mb-2 book-heading-top">
-        <h1 class="font-bold text-4xl mb-3 text-black">
-          Book Your Appointment
-        </h1>
-        <p class="text-lg text-gray-700 max-w-2xl mx-auto leading-relaxed">
-          Experience professional hair and beauty services with our expert stylists in a luxurious environment
-        </p>
-      </div>
-  -->
       
       <div class="w-full max-w-4xl overflow-hidden department-block">
         <UStepper disabled :items="steps" v-model="currentStep" class="p-8 department-inner">
@@ -505,18 +495,23 @@ Key changes: generateAvailableDates() now starts from tomorrow
                        </div>
                      </div>
                      
-                     <!-- USA Phone Number with Flag -->
+                     <!-- Canadian Phone Number with Flag -->
                      <div class="space-y-3">
                       <label class="block text-sm font-medium text-gray-700 text-black">Phone Number (Canada) *</label>
                        <div class="flex items-center phone-input-container">
-                       
-                         <UInput
+                         <!-- Canadian Flag and +1 Prefix -->
+                         <div class="country-code">
+                           <img src="/canada.png" alt="Canada" class="w-5 h-4 rounded-sm" />
+                           <span class="text-gray-700 font-medium">+1</span>
+                         </div>
+                         <!-- Phone Number Input -->
+                         <input
                            v-model="contactForm.phone"
-                          placeholder="+1 (604) 555-1234"
-                           size="lg"
-                           :error="validationErrors.phone"
+                           placeholder="(604) 555-1234"
                            class="flex-1 phone-input"
+                           @input="formatPhoneNumber"
                            required
+                           type="tel"
                          />
                        </div>
                        <div class="text-xs text-gray-500">Enter your 10-digit Canadian phone number</div>
@@ -721,6 +716,29 @@ function isValidCAPhone(phone) {
   const cleanPhone = phone.replace(/\D/g, '')
   // Canada uses NANP: exactly 10 digits (area code + number)
   return cleanPhone.length === 10
+}
+
+// Format phone number as user types (Canadian format: (XXX) XXX-XXXX)
+function formatPhoneNumber(event) {
+  let value = event.target.value.replace(/\D/g, '') // Remove all non-digits
+  
+  // Limit to 10 digits
+  if (value.length > 10) {
+    value = value.slice(0, 10)
+  }
+  
+  // Apply Canadian formatting
+  if (value.length >= 6) {
+    value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6)}`
+  } else if (value.length >= 3) {
+    value = `(${value.slice(0, 3)}) ${value.slice(3)}`
+  } else if (value.length > 0) {
+    value = `(${value}`
+  }
+  
+  // Update the input value
+  event.target.value = value
+  contactForm.value.phone = value
 }
 
 function validateForm() {
@@ -1823,27 +1841,66 @@ watch([departmentRadioItems, preselectedDepartmentId], ([items, preId]) => {
 .phone-input-container {
   border-radius: 8px;
   overflow: hidden;
+  border: 1px solid #751A29;
+  display: flex;
+  align-items: center;
 }
 
 .phone-input-container .country-code {
   background: #f9fafb;
-  border: 1px solid #d1d5db;
-  border-right: none;
-  padding: 12px 16px;
+  border-right: 1px solid #d1d5db;
+  padding: 7px 16px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 500;
+  min-width: 80px;
+  justify-content: center;
 }
 
 .phone-input-container .phone-input {
-  border-left: none;
-  border-radius: 0 8px 8px 0;
+  border: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  box-shadow: none !important;
 }
 
 .phone-input-container .phone-input:focus {
-  border-left: none;
-  box-shadow: none;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.phone-input-container .phone-input:focus-within {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.phone-input-container:focus-within {
+  border-color: #751A29;
+  box-shadow: 0 0 0 1px #751A29;
+}
+
+/* Override UInput styles specifically for phone input */
+.phone-input-container :deep(.u-input) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.phone-input-container :deep(.u-input:focus) {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.phone-input-container :deep(.u-input__wrapper) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.phone-input-container :deep(.u-input__wrapper:focus) {
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
@@ -2157,4 +2214,30 @@ watch([departmentRadioItems, preselectedDepartmentId], ([items, preId]) => {
   grid-template-columns:1fr;
 }
 }
+
+
+/* Phone input styling - clean HTML input */
+.phone-input-container .phone-input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #111827;
+    width: 100%;
+    height: 100%;
+}
+
+.phone-input-container .phone-input:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.phone-input-container .phone-input::placeholder {
+    color: #9ca3af;
+}
+
+
 </style>
