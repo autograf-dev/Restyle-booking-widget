@@ -115,6 +115,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
                   <div v-if="selectedDepartment" class="sm:hidden">
                     <div class="flex items-center justify-between mb-6">
                       <UButton
+                        v-if="!cameFromUrlParam"
                         variant="ghost"
                         size="sm"
                         @click="goBackToGroupSelection"
@@ -122,6 +123,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       >
                         <UIcon name="i-lucide-arrow-left" class="text-xl" />
                       </UButton>
+                      <div v-else class="w-10"></div> <!-- Spacer when no back button -->
                       <div class="text-center">
                         <p class="text-lg font-semibold text-dark">{{ departmentRadioItems.find(d => d.value === selectedDepartment)?.label }} Services</p>
                       </div>
@@ -1031,6 +1033,21 @@ function filterSlotsByBusinessHours(slots, date) {
 
 // Fetch groups for department radio
 onMounted(async () => {
+  // Check for URL parameters first
+  let groupFromQuery = ''
+  if (route && route.query && route.query.group) {
+    groupFromQuery = route.query.group
+  } else if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    groupFromQuery = params.get('group')
+  }
+  
+  // If group parameter exists, set it as preselected
+  if (groupFromQuery) {
+    preselectedDepartmentId.value = groupFromQuery
+    cameFromUrlParam.value = true
+  }
+  
   try {
     const res = await fetch('https://restyle-backend.netlify.app/.netlify/functions/supabasegroups')
     const data = await res.json()
@@ -1047,6 +1064,9 @@ onMounted(async () => {
       description: group.description || '',
       icon: getGroupIcon(group.name)
     }))
+    
+    console.log('Loaded groups:', departmentRadioItems.value)
+    console.log('Preselected department ID:', preselectedDepartmentId.value)
     // Auto-select first group by default if none preselected (desktop only)
     if (!preselectedDepartmentId.value && departmentRadioItems.value.length > 0) {
       // Only auto-select on desktop, mobile should start with group selection
@@ -1054,6 +1074,29 @@ onMounted(async () => {
       if (!isMobile) {
         selectedDepartment.value = departmentRadioItems.value[0].value
       } else {
+        selectedDepartment.value = ''
+      }
+    } else if (preselectedDepartmentId.value) {
+      // If we have a preselected department (from URL parameter), find it by name or ID
+      console.log('Auto-selecting department from URL parameter:', preselectedDepartmentId.value)
+      
+      // Try to find by name first (for URLs like ?group=Ladies)
+      let foundGroup = departmentRadioItems.value.find(group => 
+        group.label.toLowerCase() === preselectedDepartmentId.value.toLowerCase()
+      )
+      
+      // If not found by name, try by ID (for URLs like ?group=123)
+      if (!foundGroup) {
+        foundGroup = departmentRadioItems.value.find(group => 
+          group.value === preselectedDepartmentId.value
+        )
+      }
+      
+      if (foundGroup) {
+        selectedDepartment.value = foundGroup.value
+        console.log('Found and selected group:', foundGroup.label, 'ID:', foundGroup.value)
+      } else {
+        console.log('Group not found:', preselectedDepartmentId.value)
         selectedDepartment.value = ''
       }
     } else {
@@ -1928,18 +1971,34 @@ function selectStaff(value) {
 const route = typeof useRoute === 'function' ? useRoute() : null
 const preselectedDepartmentId = ref('')
 const filterGroupName = ref('')
+const cameFromUrlParam = ref(false)
 
-// --- On mount, check for ?id=... in URL and preselect department ---
+// --- On mount, check for ?id=... and ?group= in URL and preselect department ---
 onMounted(async () => {
   // ...existing code...
   // Check for ?id=... in URL (works for Nuxt or Vue Router projects)
   let idFromQuery = ''
+  let groupFromQuery = ''
   if (route && route.query && route.query.id) {
     idFromQuery = route.query.id
   } else if (typeof window !== 'undefined') {
     // fallback for plain Vue: parse window.location.search
     const params = new URLSearchParams(window.location.search)
     idFromQuery = params.get('id')
+  }
+  
+  // Check for ?group= parameter
+  if (route && route.query && route.query.group) {
+    groupFromQuery = route.query.group
+  } else if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    groupFromQuery = params.get('group')
+  }
+  
+  // If group parameter exists, set it as preselected
+  if (groupFromQuery) {
+    preselectedDepartmentId.value = groupFromQuery
+    cameFromUrlParam.value = true
   }
   if (idFromQuery) {
     preselectedDepartmentId.value = idFromQuery
