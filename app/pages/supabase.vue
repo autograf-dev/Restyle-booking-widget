@@ -552,9 +552,9 @@ Key changes: generateAvailableDates() now starts from tomorrow
                 >
                   <UIcon name="i-lucide-arrow-left" class="text-xl" />
                 </UButton>
-                <div class="text-center flex-1">
-                  <h2 class="text-2xl font-bold text-black mb-2">Contact Information</h2>
-                  <p class="text-gray-700">Please provide your details to complete the booking</p>
+                <div class="text-left lg:text-center flex-1">
+                  <h2 class="text-2xl font-bold text-black mb-2 lg:py-2.5">Contact Information</h2>
+                  <p class="text-gray-700 hidden lg:block">Please provide your details to complete the booking</p>
                 </div>
               </div>
               
@@ -562,26 +562,26 @@ Key changes: generateAvailableDates() now starts from tomorrow
               <div class="lg:hidden mb-6">
                 <div class="p-4 rounded-xl border border-gray-200 bg-white">
                   <h3 class="font-bold text-lg text-black mb-4">Appointment Summary</h3>
-                  <div class="space-y-2">
+                  <div class="space-y-1">
                     <!-- Date -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1">
                       <UIcon name="i-lucide-calendar" class="text-sm text-red-700" />
                       <span class="text-sm font-semibold text-black">{{ formatCalendarDate(selectedCalendarDate) }}</span>
                     </div>
                     <!-- Time and Duration combined -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1">
                       <UIcon name="i-lucide-clock" class="text-sm text-red-700" />
                       <span class="text-sm font-semibold text-black">{{ selectedSlot }} MST</span>
                       <span class="text-sm text-gray-700">for {{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
                     </div>
                     <!-- Service and Staff combined -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1">
                       <UIcon name="i-lucide-scissors" class="text-sm text-red-700" />
                       <span class="text-sm font-semibold text-black">{{ selectedServiceObj?.label }}</span>
                       <span class="text-sm text-gray-700">with {{ selectedStaffObj?.label }}</span>
                     </div>
                     <!-- Guests -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1">
                       <UIcon :name="guestCount > 1 ? 'i-lucide-users' : 'i-lucide-user'" class="text-sm text-red-700" />
                       <span class="text-sm text-gray-700">{{ guestCount }} {{ guestCount === 1 ? 'person' : 'people' }}</span>
                     </div>
@@ -620,7 +620,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
                      
                      <!-- Canadian Phone Number with Flag -->
                      <div class="space-y-3">
-                      <label class="block text-sm font-medium text-gray-700 text-black">Phone Number (Canada) *</label>
+                      <label class="block text-sm font-medium text-gray-700 text-black">Phone Number *</label>
                        <div class="flex items-center phone-input-container">
                          <!-- Canadian Flag and +1 Prefix -->
                          <div class="country-code">
@@ -637,7 +637,6 @@ Key changes: generateAvailableDates() now starts from tomorrow
                            type="tel"
                          />
                        </div>
-                       <div class="text-xs text-gray-500">Enter your 10-digit Canadian phone number</div>
                      </div>
                     
                                          <UCheckbox
