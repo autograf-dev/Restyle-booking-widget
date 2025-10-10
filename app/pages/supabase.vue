@@ -301,17 +301,17 @@ Key changes: generateAvailableDates() now starts from tomorrow
               </div>
 
               <!-- Added MST timezone indicator -->
-              <div class="text-center mb-6">
+              <div class="text-center mb-4">
                 <div class="text-sm font-medium text-gray-600 uppercase tracking-wide">
                   TIME ZONE: MOUNTAIN TIME - EDMONTON (GMT-06:00)
                 </div>
               </div>
               
-              <!-- Updated date slider to show 3 dates and make them clickable -->
-              <div class="space-y-6">
+              <!-- Updated date slider to show 2 dates on mobile, 3 on desktop and make them clickable -->
+              <div class="space-y-4">
                 <!-- Date Slider - Only show when slots are loaded -->
                 <div v-if="workingSlotsLoaded && availableDates.length > 0" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                  <div class="flex items-center justify-between mb-6">
+                  <div class="flex items-center justify-between mb-4">
                     <UButton
                       variant="ghost"
                       size="sm"
@@ -322,8 +322,8 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       <UIcon name="i-lucide-chevron-left" class="text-xl" />
                     </UButton>
                     
-                    <!-- Show 1 date on mobile, 3 on larger screens -->
-                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:mx-4">
+                    <!-- Show 2 dates on mobile, 3 on larger screens -->
+                    <div class="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-4 sm:mx-4">
                       <div
                         v-for="(dateInfo, index) in visibleDates"
                         :key="dateInfo.dateString"
@@ -351,7 +351,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       variant="ghost"
                       size="sm"
                       @click="navigateDate(1)"
-                      :disabled="currentDateIndex >= availableDates.length - (typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 3)"
+                      :disabled="currentDateIndex >= availableDates.length - (typeof window !== 'undefined' && window.innerWidth < 640 ? 2 : 3)"
                       class="p-2"
                     >
                       <UIcon name="i-lucide-chevron-right" class="text-xl" />
@@ -374,9 +374,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
                   <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm min-h-[400px]">
                     <!-- Show slots immediately if available -->
                     <div v-if="enabledSlotsForDate.length > 0" class="space-y-4">
-                      <div class="text-sm text-gray-600 mb-3">
-                        Available slots for {{ selectedDateString ? formatDateForDisplay(selectedDateString) : '' }}:
-                      </div>
+
                       <div class="grid sm:grid-cols-4 sm:gap-4 grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-2">
                         <UButton
                           v-for="slot in enabledSlotsForDate"
@@ -1181,9 +1179,9 @@ function isSlotInPastMST(slotTime, dateString) {
 const currentDateIndex = ref(0)
 const availableDates = ref([])
 const visibleDates = computed(() => {
-  // Show only 1 date on mobile, 3 on larger screens
+  // Show 2 dates on mobile, 3 on larger screens
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
-  const dateCount = isMobile ? 1 : 3
+  const dateCount = isMobile ? 2 : 3
   return availableDates.value.slice(currentDateIndex.value, currentDateIndex.value + dateCount)
 })
 
@@ -1297,9 +1295,9 @@ function isThisWeek(dateString) {
 
 function navigateDate(direction) {
   const newIndex = currentDateIndex.value + direction
-  // Calculate max index based on screen size (mobile shows 1, desktop shows 3)
+  // Calculate max index based on screen size (mobile shows 2, desktop shows 3)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
-  const dateCount = isMobile ? 1 : 3
+  const dateCount = isMobile ? 2 : 3
   const maxIndex = availableDates.value.length - dateCount
   
   if (newIndex >= 0 && newIndex <= maxIndex) {
@@ -2128,6 +2126,34 @@ watch([departmentRadioItems, preselectedDepartmentId], ([items, preId]) => {
 }
 
 
+/* Mobile padding reduction for date slider */
+@media only screen and (max-width: 640px) {
+  /* Reduce container padding */
+  .bg-white.rounded-xl.border.border-gray-200.p-6 {
+    padding: 12px !important;
+  }
+  
+  /* Reduce gap between date cards */
+  .grid.grid-cols-2.gap-4 {
+    gap: 8px !important;
+  }
+  
+  /* Reduce padding inside date cards */
+  .p-4.rounded-lg {
+    padding: 8px !important;
+  }
+  
+  /* Reduce margin bottom for navigation */
+  .flex.items-center.justify-between.mb-4 {
+    margin-bottom: 8px !important;
+  }
+  
+  /* Reduce navigation button padding */
+  .p-2 {
+    padding: 4px !important;
+  }
+}
+
 @media only screen and (max-width: 1023px) {
 :deep(.appointment-summary-mobile) {
   display: grid;
@@ -2237,6 +2263,28 @@ watch([departmentRadioItems, preselectedDepartmentId], ([items, preId]) => {
 
 .phone-input-container .phone-input::placeholder {
     color: #9ca3af;
+}
+
+/* Mobile phone input size reduction */
+@media only screen and (max-width: 640px) {
+  .phone-input-container .phone-input {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+  
+  .phone-input-container .country-code {
+    padding: 8px 12px !important;
+    min-width: 70px !important;
+  }
+  
+  .phone-input-container .country-code img {
+    width: 16px !important;
+    height: 12px !important;
+  }
+  
+  .phone-input-container .country-code span {
+    font-size: 14px !important;
+  }
 }
 
 
