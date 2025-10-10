@@ -56,35 +56,82 @@ Key changes: generateAvailableDates() now starts from tomorrow
                 <div v-if="loadingGroups" class="space-y-4">
                   <USkeleton class="h-20 rounded-xl bg-gray-100" v-for="i in 6" :key="i" />
                 </div>
-                <!-- Group selection (single-line scrollable) -->
-                <div v-else class="flex gap-2.5 mb-8 overflow-x-auto whitespace-nowrap group-row">
-                  <div
-                    v-for="item in departmentRadioItems"
-                    :key="item.value"
-                    @click="selectDepartment(item.value)"
-                    :class="[
-                      'cursor-pointer inline-flex shrink-0 items-center justify-between transition-all duration-200 hover:shadow-sm px-2.5 py-1.5 rounded-xl border-2',
-                      selectedDepartment === item.value
-                        ? 'bg-[#751A29] text-white border-[#751A29] shadow-sm'
-                        : 'bg-white text-black border-gray-200 hover:border-red-300'
-                    ]"
-                  >
-                    <div class="flex items-center gap-2 vertical-center">
-                      <div :class="['pt-2']">
+                <!-- Group selection -->
+                <div v-else class="mb-8">
+                  <!-- Desktop: horizontal scroll -->
+                  <div class="hidden sm:flex gap-2.5 overflow-x-auto whitespace-nowrap group-row">
+                    <div
+                      v-for="item in departmentRadioItems"
+                      :key="item.value"
+                      @click="selectDepartment(item.value)"
+                      :class="[
+                        'cursor-pointer inline-flex shrink-0 items-center justify-between transition-all duration-200 hover:shadow-sm px-2.5 py-1.5 rounded-xl border-2',
+                        selectedDepartment === item.value
+                          ? 'bg-[#751A29] text-white border-[#751A29] shadow-sm'
+                          : 'bg-white text-black border-gray-200 hover:border-red-300'
+                      ]"
+                    >
+                      <div class="flex items-center gap-2 vertical-center">
+                        <div :class="['pt-2']">
+                          <UIcon :name="item.icon || 'i-lucide-user-female'" :class="[
+                            'w-4 h-4',
+                            selectedDepartment === item.value ? 'text-white' : 'text-gray-500'
+                          ]" />
+                        </div>
+                        <div class="flex items-center">
+                          <span class="text-xs font-medium leading-none block" :class="selectedDepartment === item.value ? 'text-white' : 'text-gray-700'">{{ item.label }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Mobile: Step 1 - Group Selection -->
+                  <div v-if="!selectedDepartment" class="sm:hidden">
+                    <div class="text-center mb-6">
+                      <h3 class="text-lg font-semibold text-black mb-2">Step 1: Choose Your Service Category</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div
+                        v-for="item in departmentRadioItems"
+                        :key="item.value"
+                        @click="selectDepartment(item.value)"
+                        :class="[
+                          'cursor-pointer flex flex-col items-center justify-center transition-all duration-200 hover:shadow-sm p-4 rounded-xl border-2',
+                          selectedDepartment === item.value
+                            ? 'bg-[#751A29] text-white border-[#751A29] shadow-sm'
+                            : 'bg-white text-black border-gray-200 hover:border-red-300'
+                        ]"
+                      >
                         <UIcon :name="item.icon || 'i-lucide-user-female'" :class="[
-                          'w-4 h-4',
+                          'w-6 h-6 mb-2',
                           selectedDepartment === item.value ? 'text-white' : 'text-gray-500'
                         ]" />
+                        <span class="text-sm font-medium text-center" :class="selectedDepartment === item.value ? 'text-white' : 'text-gray-700'">{{ item.label }}</span>
                       </div>
-                      <div class="flex items-center">
-                        <span class="text-xs font-medium leading-none block" :class="selectedDepartment === item.value ? 'text-white' : 'text-gray-700'">{{ item.label }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Mobile: Step 2 - Service Selection (shown after group is selected) -->
+                  <div v-if="selectedDepartment" class="sm:hidden">
+                    <div class="flex items-center justify-between mb-6">
+                      <UButton
+                        variant="ghost"
+                        size="sm"
+                        @click="goBackToGroupSelection"
+                        class="p-2"
+                      >
+                        <UIcon name="i-lucide-arrow-left" class="text-xl" />
+                      </UButton>
+                      <div class="text-center">
+                        <p class="text-lg font-semibold text-dark">{{ departmentRadioItems.find(d => d.value === selectedDepartment)?.label }} Services</p>
                       </div>
+                      <div class="w-10"></div> <!-- Spacer for centering -->
                     </div>
                   </div>
                 </div>
                 
                 <!-- Services list for selected group (3 per row) -->
-                <div v-if="selectedDepartment">
+                <div v-if="selectedDepartment" class="hidden sm:block">
                   <div v-if="loadingServices" class="space-y-2 mb-6">
                     <USkeleton class="h-20 rounded-2xl bg-gray-100" v-for="i in 3" :key="i" />
                   </div>
@@ -129,6 +176,53 @@ Key changes: generateAvailableDates() now starts from tomorrow
                   </div>
                   </div>
                 </div>
+                
+                <!-- Mobile Services Section (only shown after group selection) -->
+                <div v-if="selectedDepartment" class="sm:hidden">
+                  <div v-if="loadingServices" class="space-y-2 mb-6">
+                    <USkeleton class="h-20 rounded-2xl bg-gray-100" v-for="i in 3" :key="i" />
+                  </div>
+                  <div v-else class="grid grid-cols-1 gap-3 mb-6">
+                    <div
+                      v-for="item in serviceRadioItems"
+                      :key="item.value"
+                      @click="selectService(item.value)"
+                      :class="[
+                        'cursor-pointer p-4 border-2 rounded-2xl flex items-center justify-between transition-all duration-200 hover:shadow-sm',
+                        selectedService === item.value
+                          ? 'bg-red-50 text-black border-red-700 shadow-sm'
+                          : 'bg-white text-black border-gray-200 hover:border-red-300'
+                      ]"
+                    >
+                      <div class="flex items-center gap-3.5 w-full">
+                        <div :class="[
+                          'w-10 h-10 rounded-full bg-red-100 flex items-center justify-center',
+                          selectedService === item.value ? 'text-red-700' : 'text-gray-600'
+                        ]">
+                          <UIcon name="i-lucide-scissors" :class="[
+                            'w-5 h-5 text-[oklch(0.38_0.12_16.62)]'
+                          ]" />
+                        </div>
+                        <div class="flex-1">
+                          <div class="text-sm font-semibold text-gray-700">{{ item.label }}</div>
+                          <div class="mt-1.5 flex items-center gap-4 flex-wrap">
+                            <span class="inline-flex items-center gap-1 text-xs text-gray-700">
+                              <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-gray-700" />
+                              {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
+                            </span>
+                            <span class="inline-flex items-center gap-1 text-[11px] text-gray-700">
+                              <UIcon name="i-lucide-users" class="w-3.5 h-3.5 text-gray-700" />
+                              {{ (servicesFullData.find(s => s.id === item.value)?.teamMembers?.length) ?? 0 }} staff available
+                            </span>
+                          </div>
+                        </div>
+                        <div v-if="selectedService === item.value" class="text-red-700">
+                          <UIcon name="i-lucide-check-circle" class="w-5 h-5" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div class="flex gap-4 same-btn-prev-next">
                   <UButton
@@ -169,7 +263,7 @@ Key changes: generateAvailableDates() now starts from tomorrow
               </div>
 
               <!-- Summary cards: Service | Guests | Staff -->
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-3xl mx-auto">
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8 max-w-3xl mx-auto">
                 <!-- Service Card -->
                 <div class="text-center p-4 bg-white rounded-xl border border-gray-200">
                   <div class="font-bold text-lg mb-1 text-black">Service</div>
@@ -220,8 +314,8 @@ Key changes: generateAvailableDates() now starts from tomorrow
                     </UButton>
                   </div>
                 </div>
-                <!-- Staff Card -->
-                <div class="text-center p-4 bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center">
+                <!-- Staff Card - Hidden on mobile -->
+                <div class="hidden md:block text-center p-4 bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center">
                   <div class="font-bold text-lg mb-1 text-black">Stylist</div>
                   <div class="text-red-700 font-semibold text-center">{{ selectedStaffObj?.label || 'Any available' }}</div>
                 </div>
@@ -464,6 +558,37 @@ Key changes: generateAvailableDates() now starts from tomorrow
                 </div>
               </div>
               
+              <!-- Mobile: Single combined summary card at top -->
+              <div class="lg:hidden mb-6">
+                <div class="p-4 rounded-xl border border-gray-200 bg-white">
+                  <h3 class="font-bold text-lg text-black mb-4">Appointment Summary</h3>
+                  <div class="space-y-2">
+                    <!-- Date -->
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-calendar" class="text-sm text-red-700" />
+                      <span class="text-sm font-semibold text-black">{{ formatCalendarDate(selectedCalendarDate) }}</span>
+                    </div>
+                    <!-- Time and Duration combined -->
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-clock" class="text-sm text-red-700" />
+                      <span class="text-sm font-semibold text-black">{{ selectedSlot }} MST</span>
+                      <span class="text-sm text-gray-700">for {{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
+                    </div>
+                    <!-- Service and Staff combined -->
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-scissors" class="text-sm text-red-700" />
+                      <span class="text-sm font-semibold text-black">{{ selectedServiceObj?.label }}</span>
+                      <span class="text-sm text-gray-700">with {{ selectedStaffObj?.label }}</span>
+                    </div>
+                    <!-- Guests -->
+                    <div class="flex items-center gap-2">
+                      <UIcon :name="guestCount > 1 ? 'i-lucide-users' : 'i-lucide-user'" class="text-sm text-red-700" />
+                      <span class="text-sm text-gray-700">{{ guestCount }} {{ guestCount === 1 ? 'person' : 'people' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Contact Form -->
                 <div class="space-y-6">
@@ -535,8 +660,8 @@ Key changes: generateAvailableDates() now starts from tomorrow
                   </form>
                 </div>
                 
-                <!-- Appointment Summary -->
-                <div class="space-y-4">
+                <!-- Desktop: Appointment Summary (unchanged) -->
+                <div class="hidden lg:block space-y-4">
                   <h3 class="font-bold text-xl text-black mb-4">Appointment Summary</h3>
                   
                   <div class="space-y-4 appointment-summary-mobile">
@@ -923,9 +1048,15 @@ onMounted(async () => {
       description: group.description || '',
       icon: getGroupIcon(group.name)
     }))
-    // Auto-select first group by default if none preselected
+    // Auto-select first group by default if none preselected (desktop only)
     if (!preselectedDepartmentId.value && departmentRadioItems.value.length > 0) {
-      selectedDepartment.value = departmentRadioItems.value[0].value
+      // Only auto-select on desktop, mobile should start with group selection
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+      if (!isMobile) {
+        selectedDepartment.value = departmentRadioItems.value[0].value
+      } else {
+        selectedDepartment.value = ''
+      }
     } else {
       selectedDepartment.value = ''
     }
@@ -1178,6 +1309,13 @@ function isSlotInPastMST(slotTime, dateString) {
 
 const currentDateIndex = ref(0)
 const availableDates = ref([])
+
+// Group navigation for mobile slider
+const currentGroupIndex = ref(0)
+const visibleGroups = computed(() => {
+  // Show 2 groups at a time on mobile
+  return departmentRadioItems.value.slice(currentGroupIndex.value, currentGroupIndex.value + 2)
+})
 const visibleDates = computed(() => {
   // Show 2 dates on mobile, 3 on larger screens
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
@@ -1308,6 +1446,22 @@ function navigateDate(direction) {
       selectDate(firstVisibleDate)
     }
   }
+}
+
+function navigateGroup(direction) {
+  const newIndex = currentGroupIndex.value + direction
+  const maxIndex = departmentRadioItems.value.length - 2 // Show 2 groups at a time
+  
+  if (newIndex >= 0 && newIndex <= maxIndex) {
+    currentGroupIndex.value = newIndex
+  }
+}
+
+function goBackToGroupSelection() {
+  selectedDepartment.value = ''
+  selectedService.value = ''
+  // Reset any related state
+  currentGroupIndex.value = 0
 }
 
 function selectDate(dateInfo) {
