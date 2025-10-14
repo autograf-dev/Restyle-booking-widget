@@ -1251,7 +1251,7 @@ async function fetchWorkingSlots() {
     
     // Use WorkingSlots endpoint - returns 7 working days skipping weekends
     // Only include userId parameter when specific staff is selected (not "any available")
-    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}`
+    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlotss?calendarId=${serviceId}`
     if (userId && selectedStaff.value !== 'any') {
       apiUrl += `&userId=${userId}`
       console.log('Fetching slots for specific staff userId:', userId)
