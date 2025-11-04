@@ -681,10 +681,11 @@ Key changes: generateAvailableDates() now starts from tomorrow
                         <div class="flex items-center gap-3">
                           <UIcon name="i-lucide-clock" class="text-xl text-red-700" />
                           <span class="font-semibold text-black">{{ selectedSlot }} MST</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                          <UIcon name="i-lucide-hourglass" class="text-xl text-red-700" />
-                          <span class="text-gray-700">{{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
+                          <span v-if="getServicePriceString(selectedService)" class="text-gray-700">
+                            <UIcon name="i-lucide-dollar-sign" class="text-xl text-red-700 inline" />
+                            {{ getServicePriceString(selectedService) }}
+                          </span>
+                          <span class="text-gray-700">for {{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
                         </div>
                        
                       </div>
