@@ -570,10 +570,14 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       <UIcon name="i-lucide-calendar" class="text-sm text-red-700" />
                       <span class="text-sm font-semibold text-black">{{ formatCalendarDate(selectedCalendarDate) }}</span>
                     </div>
-                    <!-- Time and Duration combined -->
+                    <!-- Time, Price and Duration combined -->
                     <div class="flex items-center gap-1">
                       <UIcon name="i-lucide-clock" class="text-sm text-red-700" />
                       <span class="text-sm font-semibold text-black">{{ selectedSlot }} MST</span>
+                      <span v-if="getServicePriceString(selectedService)" class="text-sm text-gray-700">
+                        <UIcon name="i-lucide-dollar-sign" class="text-sm text-red-700 inline" />
+                        {{ getServicePriceString(selectedService) }}
+                      </span>
                       <span class="text-sm text-gray-700">for {{ formatDurationMins(getServiceDuration(selectedService)) }}</span>
                     </div>
                     <!-- Service and Staff combined -->
@@ -1681,6 +1685,20 @@ function getServicePriceFromDescription(serviceId) {
   }
   
   return 0
+}
+
+// Helper function to get formatted price string (e.g., "CA$40.00")
+function getServicePriceString(serviceId) {
+  const service = servicesFullData.value.find(s => s.id === serviceId)
+  if (!service || !service.description) return ''
+  
+  // Extract price from description HTML like "<p style="margin:0px;color:#10182899">CA$175.00</p>"
+  const priceMatch = service.description.match(/CA\$(\d+\.?\d{2})/i)
+  if (priceMatch) {
+    return priceMatch[0] // Return "CA$175.00"
+  }
+  
+  return ''
 }
 
 function goToNextStepDateTime() {
