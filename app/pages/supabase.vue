@@ -161,6 +161,10 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       <div class="flex-1">
                         <div class="text-sm font-semibold text-gray-700">{{ item.label }}</div>
                         <div class="mt-1.5 flex items-center gap-4 flex-wrap">
+                          <span v-if="getServicePriceString(item.value)" class="inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
+                            <UIcon name="i-lucide-dollar-sign" class="w-3.5 h-3.5 text-red-700" />
+                            {{ getServicePriceString(item.value) }}
+                          </span>
                           <span class="inline-flex items-center gap-1 text-xs text-gray-700">
                             <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-gray-700" />
                             {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
@@ -208,6 +212,10 @@ Key changes: generateAvailableDates() now starts from tomorrow
                         <div class="flex-1">
                           <div class="text-sm font-semibold text-gray-700">{{ item.label }}</div>
                           <div class="mt-1.5 flex items-center gap-4 flex-wrap">
+                            <span v-if="getServicePriceString(item.value)" class="inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
+                              <UIcon name="i-lucide-dollar-sign" class="w-3.5 h-3.5 text-red-700" />
+                              {{ getServicePriceString(item.value) }}
+                            </span>
                             <span class="inline-flex items-center gap-1 text-xs text-gray-700">
                               <UIcon name="i-lucide-clock" class="w-3.5 h-3.5 text-gray-700" />
                               {{ formatDurationMins(serviceRadioItems.find(s => s.value === item.value)?.durationMinutes || 0) }}
@@ -1134,8 +1142,20 @@ watch(selectedDepartment, async (groupId) => {
     const res = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const data = await res.json()
     
+    console.log('📥 Services API response:', data)
+    console.log('📥 data.calendars:', data.calendars)
+    console.log('📥 data.calendars length:', data.calendars?.length)
+    
     // Store full API data for price extraction
     servicesFullData.value = data.calendars || []
+    console.log('💾 Stored servicesFullData.value:', servicesFullData.value)
+    console.log('💾 servicesFullData.value length:', servicesFullData.value.length)
+    
+    // Log first service to check structure
+    if (servicesFullData.value.length > 0) {
+      console.log('📋 First service in servicesFullData:', servicesFullData.value[0])
+      console.log('📋 First service description:', servicesFullData.value[0]?.description)
+    }
     
     serviceRadioItems.value = (data.calendars || []).map(service => {
       const raw = Number(service.slotDuration ?? service.duration ?? 0)
@@ -1164,6 +1184,14 @@ watch(selectedDepartment, async (groupId) => {
 
 // Watch for selectedService change and fetch staff
 watch(selectedService, async (serviceId) => {
+  console.log('🎯 selectedService changed to:', serviceId)
+  console.log('📦 Current servicesFullData.value length:', servicesFullData.value?.length)
+  
+  if (serviceId) {
+    const price = getServicePriceString(serviceId)
+    console.log('💰 Price check when service selected:', price)
+  }
+  
   staffRadioItems.value = []
   selectedStaff.value = ''
   if (!serviceId) return
@@ -1173,8 +1201,17 @@ watch(selectedService, async (serviceId) => {
     const lastServiceApi = await fetch(`https://restyle-backend.netlify.app/.netlify/functions/Services?id=${groupId}`)
     const lastServiceData = await lastServiceApi.json()
     console.log('Service API response:', lastServiceData)
+    
+    // Update servicesFullData if not already populated or if current service not found
+    if (servicesFullData.value.length === 0 || !servicesFullData.value.find(s => s.id === serviceId)) {
+      console.log('🔄 Updating servicesFullData from watch function')
+      servicesFullData.value = lastServiceData.calendars || []
+      console.log('💾 Updated servicesFullData.value length:', servicesFullData.value.length)
+    }
+    
     const serviceObj = (lastServiceData.calendars || []).find(s => s.id === serviceId)
     console.log('Found service object:', serviceObj)
+    console.log('Found service description:', serviceObj?.description)
     const teamMembers = serviceObj?.teamMembers || []
     console.log('Team members for service:', teamMembers)
 
@@ -1690,15 +1727,36 @@ function getServicePriceFromDescription(serviceId) {
 
 // Helper function to get formatted price string (e.g., "CA$40.00")
 function getServicePriceString(serviceId) {
+  console.log('🔍 getServicePriceString called with serviceId:', serviceId)
+  console.log('📦 servicesFullData.value:', servicesFullData.value)
+  console.log('📦 servicesFullData.value.length:', servicesFullData.value?.length)
+  
   const service = servicesFullData.value.find(s => s.id === serviceId)
-  if (!service || !service.description) return ''
+  console.log('🔎 Found service:', service)
+  
+  if (!service) {
+    console.log('❌ No service found for ID:', serviceId)
+    return ''
+  }
+  
+  if (!service.description) {
+    console.log('❌ Service has no description:', service)
+    return ''
+  }
+  
+  console.log('📝 Service description:', service.description)
   
   // Extract price from description HTML like "<p style="margin:0px;color:#10182899">CA$175.00</p>"
   const priceMatch = service.description.match(/CA\$(\d+\.?\d{2})/i)
+  console.log('💰 Price match result:', priceMatch)
+  
   if (priceMatch) {
-    return priceMatch[0] // Return "CA$175.00"
+    const price = priceMatch[0] // Return "CA$175.00"
+    console.log('✅ Extracted price:', price)
+    return price
   }
   
+  console.log('❌ No price match found in description')
   return ''
 }
 
