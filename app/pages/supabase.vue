@@ -825,6 +825,12 @@ const loadingSlots = ref(false)
 const workingSlots = ref({})
 const workingSlotsLoaded = ref(false)
 
+// Pagination state for loading slots in chunks
+const currentPage = ref(1)
+const hasMorePages = ref(false)
+const loadingMoreSlots = ref(false)
+const totalPagesAvailable = ref(1)
+
 
 
 // Form validation
@@ -1283,6 +1289,8 @@ async function fetchWorkingSlots() {
   workingSlots.value = {}
   workingSlotsLoaded.value = false
   loadingSlots.value = true
+  currentPage.value = 1 // Reset to page 1
+  hasMorePages.value = false
 
   const serviceId = selectedService.value
   const userId = selectedStaff.value && selectedStaff.value !== 'any' ? selectedStaff.value : null
@@ -1291,9 +1299,9 @@ async function fetchWorkingSlots() {
     // ✅ FIXED: Get service duration dynamically for slot filtering
     const serviceDurationMinutes = getServiceDuration(serviceId)
     
-    // Use WorkingSlots endpoint - returns 7 working days skipping weekends
+    // Use WorkingSlots endpoint - returns 7 working days skipping weekends (page 1)
     // Only include userId parameter when specific staff is selected (not "any available")
-    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlotss?calendarId=${serviceId}`
+    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlotss?calendarId=${serviceId}&page=1`
     if (userId && selectedStaff.value !== 'any') {
       apiUrl += `&userId=${userId}`
       console.log('Fetching slots for specific staff userId:', userId)
@@ -1307,20 +1315,22 @@ async function fetchWorkingSlots() {
       console.log('🔧 Adding service duration to API call:', serviceDurationMinutes, 'minutes')
     }
     
-    console.log('Staff Slots API URL:', apiUrl)
+    console.log('📅 Fetching page 1 slots - Staff Slots API URL:', apiUrl)
     
     const response = await fetch(apiUrl)
     const data = await response.json()
-    console.log('Working Slots API response:', data)
+    console.log('Working Slots API response (page 1):', data)
 
     if (data.slots && data.calendarId) {
       workingSlots.value = data.slots
       workingSlotsLoaded.value = true
+      hasMorePages.value = data.hasMore || false
+      totalPagesAvailable.value = data.totalPages || 1
       
       // Generate available dates from working slots
       generateAvailableDates()
       
-      console.log('Working slots loaded successfully:', data.slots)
+      console.log('✅ Loaded page 1:', Object.keys(data.slots).length, 'days, hasMore:', data.hasMore)
     } else {
       console.error('Invalid working slots response format:', data)
     }
@@ -1362,6 +1372,61 @@ async function fetchSlotsForDate(dateString) {
   // If no weekly slots for this date, show empty
   slotsForDate.value = []
   console.log('No weekly slots available for date:', dateString)
+}
+
+// Load next page and merge with existing slots
+async function loadMoreSlots() {
+  if (!hasMorePages.value || loadingMoreSlots.value || !selectedService.value) {
+    console.log('Cannot load more:', { hasMore: hasMorePages.value, loading: loadingMoreSlots.value })
+    return
+  }
+
+  loadingMoreSlots.value = true
+  const nextPage = currentPage.value + 1
+  
+  console.log('📄 Loading page', nextPage, 'of', totalPagesAvailable.value)
+
+  try {
+    const serviceId = selectedService.value
+    const userId = selectedStaff.value && selectedStaff.value !== 'any' ? selectedStaff.value : null
+    const serviceDurationMinutes = getServiceDuration(serviceId)
+    
+    let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlotss?calendarId=${serviceId}&page=${nextPage}`
+    
+    if (userId && selectedStaff.value !== 'any') {
+      apiUrl += `&userId=${userId}`
+    }
+    
+    if (serviceDurationMinutes) {
+      apiUrl += `&serviceDuration=${serviceDurationMinutes}`
+    }
+    
+    console.log('📡 Fetching page', nextPage, ':', apiUrl)
+    
+    const response = await fetch(apiUrl)
+    const data = await response.json()
+    console.log('Page', nextPage, 'response:', data)
+
+    if (data.slots) {
+      // Merge new slots with existing
+      workingSlots.value = {
+        ...workingSlots.value,
+        ...data.slots
+      }
+      
+      currentPage.value = nextPage
+      hasMorePages.value = data.hasMore || false
+      
+      // Regenerate available dates to include new dates
+      generateAvailableDates()
+      
+      console.log('✅ Merged page', nextPage, '- Total dates now:', Object.keys(workingSlots.value).length)
+    }
+  } catch (error) {
+    console.error('Error loading more slots:', error)
+  } finally {
+    loadingMoreSlots.value = false
+  }
 }
 
 function isSlotInPastMST(slotTime, dateString) {
@@ -1497,6 +1562,9 @@ function generateAvailableDates() {
   }
   
   availableDates.value = dates
+  
+  // Log total loaded dates
+  console.log('📅 Generated', dates.length, 'available dates from', Object.keys(workingSlots.value).length, 'loaded days')
 }
 
 // Helper function to get tomorrow's date string
@@ -1524,10 +1592,18 @@ function navigateDate(direction) {
   
   if (newIndex >= 0 && newIndex <= maxIndex) {
     currentDateIndex.value = newIndex
-    // Auto-select first visible date after navigation and fetch slots
+    
+    // Auto-select first visible date after navigation
     const firstVisibleDate = availableDates.value[newIndex]
     if (firstVisibleDate && firstVisibleDate.dateString) {
       selectDate(firstVisibleDate)
+    }
+    
+    // Auto-load next page when user is 5 days away from the end
+    const daysFromEnd = availableDates.value.length - newIndex
+    if (daysFromEnd <= 5 && hasMorePages.value && !loadingMoreSlots.value) {
+      console.log('🔄 Auto-loading next page (', daysFromEnd, 'days from end)')
+      loadMoreSlots()
     }
   }
 }
