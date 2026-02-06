@@ -1041,6 +1041,59 @@ function selectTimeSlot(time) {
   }, 300)
 }
 
+// Find an available staff member for a specific time slot
+// This function queries each staff member's availability to find one who can take the appointment
+async function findAvailableStaffForSlot(serviceId, dateString, slotTime, staffList) {
+  if (!serviceId || !dateString || !slotTime || !staffList || staffList.length === 0) {
+    console.log('❌ Missing required parameters for findAvailableStaffForSlot')
+    return null
+  }
+
+  console.log('🔍 Finding available staff for slot:', { dateString, slotTime, staffCount: staffList.length })
+  
+  const serviceDurationMinutes = getServiceDurationMinutes() || getServiceDuration()
+  
+  // Check each staff member's availability for the selected slot
+  for (const staff of staffList) {
+    try {
+      // Query the backend for this specific staff member's slots
+      let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlots?calendarId=${serviceId}&userId=${staff.value}`
+      if (serviceDurationMinutes) {
+        apiUrl += `&serviceDuration=${serviceDurationMinutes}`
+      }
+      
+      console.log(`📡 Checking availability for staff ${staff.label} (${staff.value})`)
+      
+      const response = await fetch(apiUrl)
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to fetch slots for staff ${staff.label}`)
+        continue
+      }
+      
+      const data = await response.json()
+      
+      // Check if this staff member has the selected slot available on the selected date
+      if (data.slots && data.slots[dateString]) {
+        const availableSlots = data.slots[dateString]
+        if (availableSlots.includes(slotTime)) {
+          console.log(`✅ Staff ${staff.label} is available at ${slotTime} on ${dateString}`)
+          return staff.value
+        } else {
+          console.log(`❌ Staff ${staff.label} does NOT have slot ${slotTime} available on ${dateString}`)
+        }
+      } else {
+        console.log(`❌ Staff ${staff.label} has no slots on ${dateString}`)
+      }
+    } catch (error) {
+      console.error(`Error checking availability for staff ${staff.label}:`, error)
+      continue
+    }
+  }
+  
+  console.log('❌ No staff member found with availability for the selected slot')
+  return null
+}
+
 async function updateAppointment() {
   if (!hasChanges.value) return
   
@@ -1053,9 +1106,17 @@ async function updateAppointment() {
     if (selectedStaff.value && selectedStaff.value !== 'any') {
       assignedUserIdToSend = selectedStaff.value
     } else if (selectedStaff.value === 'any') {
-      const realStaff = staffRadioItems.value.filter(item => item.value !== 'any')
-      if (realStaff.length > 0) {
-        assignedUserIdToSend = realStaff[0].value
+      // Find a staff member who is actually available at the selected time slot
+      const availableStaffId = await findAvailableStaffForSlot(
+        currentAppointment.value.calendarId,
+        selectedDateString.value,
+        selectedSlot.value,
+        staffRadioItems.value.filter(item => item.value !== 'any')
+      )
+      
+      if (availableStaffId) {
+        assignedUserIdToSend = availableStaffId
+        console.log('✅ Found available staff for slot:', assignedUserIdToSend)
       }
     }
     if (!assignedUserIdToSend && currentAppointment.value.assignedUserId) {
@@ -1063,7 +1124,7 @@ async function updateAppointment() {
     }
 
     if (!assignedUserIdToSend) {
-      throw new Error('A team member needs to be selected. assignedUserId is missing')
+      throw new Error('No staff available for this time slot. Please select a different time.')
     }
 
     // Build update URL. Always include assignedUserId

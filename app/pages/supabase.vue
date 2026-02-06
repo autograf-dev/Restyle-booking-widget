@@ -455,11 +455,28 @@ Key changes: generateAvailableDates() now starts from tomorrow
                       variant="ghost"
                       size="sm"
                       @click="navigateDate(1)"
-                      :disabled="currentDateIndex >= availableDates.length - (typeof window !== 'undefined' && window.innerWidth < 640 ? 2 : 3)"
+                      :disabled="!canNavigateForward"
                       class="p-2"
                     >
                       <UIcon name="i-lucide-chevron-right" class="text-xl" />
                     </UButton>
+                  </div>
+                  
+                  <!-- Loading indicator for background pagination -->
+                  <div v-if="loadingMoreSlots" class="text-center mt-2">
+                    <div class="inline-flex items-center gap-2 text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+                      <UIcon name="i-lucide-loader-2" class="animate-spin" />
+                      Loading more dates... (Page {{ currentPage + 1 }} of {{ totalPagesAvailable }})
+                    </div>
+                  </div>
+                  
+                  <!-- Show info about available date range -->
+                  <div v-if="workingSlotsLoaded && !loadingMoreSlots" class="text-center mt-2">
+                    <div class="text-xs text-gray-500">
+                      {{ availableDates.length }} days available
+                      <span v-if="hasMorePages" class="text-blue-600 font-medium"> • Loading more in background...</span>
+                      <span v-else class="text-green-600 font-medium"> • All dates loaded ✓</span>
+                    </div>
                   </div>
                 </div>
                 
@@ -1316,8 +1333,44 @@ async function fetchWorkingSlots() {
     }
     
     console.log('📅 Fetching page 1 slots - Staff Slots API URL:', apiUrl)
-    
-    const response = await fetch(apiUrl)
+
+    let lastError = null
+    let response = null
+    let lastStatus = null
+    let lastRequestId = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await fetch(apiUrl)
+        lastStatus = response.status
+        lastRequestId = response.headers?.get?.('x-nf-request-id')
+        if (response.ok) break
+
+        console.warn('staffSlotss failed attempt', {
+          attempt,
+          status: lastStatus,
+          requestId: lastRequestId,
+          url: apiUrl,
+        })
+
+        lastError = new Error(`staffSlotss non-OK response: ${response.status}`)
+      } catch (e) {
+        lastError = e
+      }
+
+      // simple backoff: 250ms, 500ms
+      if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 250))
+    }
+
+    if (!response || !response.ok) {
+      console.error('staffSlotss ultimately failed', {
+        status: lastStatus,
+        requestId: lastRequestId,
+        url: apiUrl,
+        error: lastError,
+      })
+      throw lastError || new Error('staffSlotss failed')
+    }
+
     const data = await response.json()
     console.log('Working Slots API response (page 1):', data)
 
@@ -1331,6 +1384,32 @@ async function fetchWorkingSlots() {
       generateAvailableDates()
       
       console.log('✅ Loaded page 1:', Object.keys(data.slots).length, 'days, hasMore:', data.hasMore)
+      
+      // 🔥 PROACTIVE FIX: Aggressively load remaining pages in background for smooth UX
+      if (data.hasMore && totalPagesAvailable.value > 1) {
+        console.log('🚀 Proactively loading remaining', totalPagesAvailable.value - 1, 'pages in background...')
+        // Use setTimeout to avoid blocking and ensure loadingSlots is false first
+        setTimeout(async () => {
+          // Load all remaining pages sequentially
+          let pagesToLoad = totalPagesAvailable.value - 1 // Already have page 1
+          let successfulLoads = 0
+          
+          while (hasMorePages.value && !loadingMoreSlots.value && successfulLoads < pagesToLoad) {
+            try {
+              await loadMoreSlots()
+              successfulLoads++
+              console.log(`📦 Background load progress: ${successfulLoads}/${pagesToLoad} pages loaded`)
+            } catch (error) {
+              console.error('Error in background loading:', error)
+              break
+            }
+          }
+          
+          if (successfulLoads === pagesToLoad) {
+            console.log('✅ All pages loaded! Users can now navigate full 30 days.')
+          }
+        }, 500)
+      }
     } else {
       console.error('Invalid working slots response format:', data)
     }
@@ -1472,6 +1551,17 @@ const visibleDates = computed(() => {
   return availableDates.value.slice(currentDateIndex.value, currentDateIndex.value + dateCount)
 })
 
+// 🔥 FIX: Computed property to check if forward navigation is possible
+// Allow navigation if there are more loaded dates OR if there are more pages to load
+const canNavigateForward = computed(() => {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const dateCount = isMobile ? 2 : 3
+  const maxLoadedIndex = availableDates.value.length - dateCount
+  
+  // Can navigate if not at the end of loaded dates OR if more pages exist to load
+  return currentDateIndex.value < maxLoadedIndex || hasMorePages.value
+})
+
 function generateAvailableDates() {
   const dates = []
   
@@ -1588,9 +1678,41 @@ function navigateDate(direction) {
   // Calculate max index based on screen size (mobile shows 2, desktop shows 3)
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
   const dateCount = isMobile ? 2 : 3
-  const maxIndex = availableDates.value.length - dateCount
+  const maxLoadedIndex = availableDates.value.length - dateCount
   
-  if (newIndex >= 0 && newIndex <= maxIndex) {
+  // 🔥 FIX: Allow navigation beyond loaded dates if more pages exist
+  if (direction < 0 && newIndex < 0) {
+    // Can't go before first date
+    return
+  }
+  
+  if (direction > 0 && newIndex > maxLoadedIndex) {
+    // Trying to navigate forward beyond loaded dates
+    if (!hasMorePages.value) {
+      // No more pages to load, can't navigate further
+      return
+    }
+    
+    // Trigger loading and wait - don't navigate yet
+    if (!loadingMoreSlots.value) {
+      console.log('🎯 User navigating beyond loaded dates - triggering load...')
+      loadMoreSlots().then(() => {
+        // After loading, try navigation again if we now have the dates
+        const newMaxIndex = availableDates.value.length - dateCount
+        if (newIndex <= newMaxIndex) {
+          currentDateIndex.value = newIndex
+          const firstVisibleDate = availableDates.value[newIndex]
+          if (firstVisibleDate && firstVisibleDate.dateString) {
+            selectDate(firstVisibleDate)
+          }
+        }
+      })
+    }
+    return
+  }
+  
+  // Normal navigation within loaded dates
+  if (newIndex >= 0 && newIndex <= maxLoadedIndex) {
     currentDateIndex.value = newIndex
     
     // Auto-select first visible date after navigation
@@ -1599,10 +1721,22 @@ function navigateDate(direction) {
       selectDate(firstVisibleDate)
     }
     
-    // Auto-load next page when user is 5 days away from the end
-    const daysFromEnd = availableDates.value.length - newIndex
-    if (daysFromEnd <= 5 && hasMorePages.value && !loadingMoreSlots.value) {
-      console.log('🔄 Auto-loading next page (', daysFromEnd, 'days from end)')
+    // 🔥 FIX: Auto-load next page when the LAST VISIBLE date is within 3 days from end
+    // Calculate the index of the last visible date (not just current index)
+    const lastVisibleIndex = newIndex + dateCount - 1
+    const daysFromEnd = availableDates.value.length - lastVisibleIndex - 1
+    
+    console.log('📊 Navigation check:', {
+      currentIndex: newIndex,
+      lastVisibleIndex,
+      totalDates: availableDates.value.length,
+      daysFromEnd,
+      hasMorePages: hasMorePages.value,
+      loadingMore: loadingMoreSlots.value
+    })
+    
+    if (daysFromEnd <= 3 && hasMorePages.value && !loadingMoreSlots.value) {
+      console.log('🔄 Auto-loading next page - last visible date is', daysFromEnd, 'days from end')
       loadMoreSlots()
     }
   }
@@ -1885,6 +2019,59 @@ async function upgradeCustomer(contactId, firstName, lastName) {
   }
 }
 
+// Find an available staff member for a specific time slot
+// This function queries each staff member's availability to find one who can take the appointment
+async function findAvailableStaffForSlot(serviceId, dateString, slotTime, staffList) {
+  if (!serviceId || !dateString || !slotTime || !staffList || staffList.length === 0) {
+    console.log('❌ Missing required parameters for findAvailableStaffForSlot')
+    return null
+  }
+
+  console.log('🔍 Finding available staff for slot:', { dateString, slotTime, staffCount: staffList.length })
+  
+  const serviceDurationMinutes = getServiceDuration(serviceId)
+  
+  // Check each staff member's availability for the selected slot
+  for (const staff of staffList) {
+    try {
+      // Query the backend for this specific staff member's slots
+      let apiUrl = `https://restyle-backend.netlify.app/.netlify/functions/staffSlotss?calendarId=${serviceId}&userId=${staff.value}&page=1`
+      if (serviceDurationMinutes) {
+        apiUrl += `&serviceDuration=${serviceDurationMinutes}`
+      }
+      
+      console.log(`📡 Checking availability for staff ${staff.label} (${staff.value})`)
+      
+      const response = await fetch(apiUrl)
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to fetch slots for staff ${staff.label}`)
+        continue
+      }
+      
+      const data = await response.json()
+      
+      // Check if this staff member has the selected slot available on the selected date
+      if (data.slots && data.slots[dateString]) {
+        const availableSlots = data.slots[dateString]
+        if (availableSlots.includes(slotTime)) {
+          console.log(`✅ Staff ${staff.label} is available at ${slotTime} on ${dateString}`)
+          return staff.value
+        } else {
+          console.log(`❌ Staff ${staff.label} does NOT have slot ${slotTime} available on ${dateString}`)
+        }
+      } else {
+        console.log(`❌ Staff ${staff.label} has no slots on ${dateString}`)
+      }
+    } catch (error) {
+      console.error(`Error checking availability for staff ${staff.label}:`, error)
+      continue
+    }
+  }
+  
+  console.log('❌ No staff member found with availability for the selected slot')
+  return null
+}
+
 async function handleInformationSubmit() {
   if (!validateForm()) {
     return
@@ -2010,15 +2197,19 @@ async function handleInformationSubmit() {
 
     let assignedUserId = selectedStaff.value
     if (assignedUserId === 'any' || !assignedUserId) {
-      const realStaff = staffRadioItems.value.filter(
-        (item) => item.value !== 'any'
+      // Find a staff member who is actually available at the selected time slot
+      const availableStaffId = await findAvailableStaffForSlot(
+        selectedService.value,
+        selectedDateString.value,
+        selectedSlot.value,
+        staffRadioItems.value.filter(item => item.value !== 'any')
       )
-      if (realStaff.length > 0) {
-        const randomStaff =
-          realStaff[Math.floor(Math.random() * realStaff.length)]
-        assignedUserId = randomStaff.value
+      
+      if (availableStaffId) {
+        assignedUserId = availableStaffId
+        console.log('✅ Found available staff for slot:', assignedUserId)
       } else {
-        throw new Error('No staff available for this service')
+        throw new Error('No staff available for this time slot. Please select a different time.')
       }
     }
 
