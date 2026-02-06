@@ -470,14 +470,6 @@ Key changes: generateAvailableDates() now starts from tomorrow
                     </div>
                   </div>
                   
-                  <!-- Show info about available date range -->
-                  <div v-if="workingSlotsLoaded && !loadingMoreSlots" class="text-center mt-2">
-                    <div class="text-xs text-gray-500">
-                      {{ availableDates.length }} days available
-                      <span v-if="hasMorePages" class="text-blue-600 font-medium"> • Loading more in background...</span>
-                      <span v-else class="text-green-600 font-medium"> • All dates loaded ✓</span>
-                    </div>
-                  </div>
                 </div>
                 
                 <!-- Loading state for dates -->
